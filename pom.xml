@@ -1,0 +1,79 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>be.apsu.graphics</groupId>
+  <artifactId>sarong</artifactId>
+  <packaging>jar</packaging>
+  <version>0.2.0-SNAPSHOT</version>
+  <name>sarong</name>
+  <description>The Sarong Project uses the Batik SVG Toolkit from the Apache XML Graphics Project to allow live display of SVG graphics that are dynamically adapted to incoming information. It allows for any part of an SVG document to represent this incoming data.
+Sarong effectively merges the schematic and the state displays in monitoring and measurement systems. </description>
+  <url>http://apsu.be/wiki/index.php/Sarong</url>
+  <developers>
+    	<developer>
+  		<id>frank</id>
+  		<name>Frank Marien</name>
+  		<email>frank@apsu.be</email>
+  	</developer>
+  </developers>
+  <scm>
+  	<connection>scm:cvs:ext:cvs.apsu.be:/cvs/apsu:sarong</connection>
+  </scm>
+  <repositories>
+  	<repository>
+  		<id>batik</id>
+  		<name>Apache Batik repository</name>
+  		<url>http://xmlgraphics.apache.org/batik/</url>
+  		<releases>
+  			<updatePolicy>always</updatePolicy>
+  			<checksumPolicy>warn</checksumPolicy>
+  		</releases>
+  		<snapshots>
+  			<updatePolicy>always</updatePolicy>
+  			<checksumPolicy>fail</checksumPolicy>
+  		</snapshots>
+  	</repository>
+  </repositories>
+  <dependencies>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>3.8.1</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+    	<groupId>org.apache.xmlgraphics</groupId>
+    	<artifactId>batik-anim</artifactId>
+    	<version>1.7</version>
+    </dependency>
+    <dependency>
+    	<groupId>org.apache.xmlgraphics</groupId>
+    	<artifactId>batik-awt-util</artifactId>
+    	<version>1.7</version>
+    </dependency>
+    <dependency>
+    	<groupId>org.apache.xmlgraphics</groupId>
+    	<artifactId>batik-swing</artifactId>
+    	<version>1.7</version>
+    </dependency>
+  </dependencies>
+  <build>
+      <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <source>1.6</source>
+          <target>1.6</target>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+  <distributionManagement>
+  	<snapshotRepository>
+  		<id>apsu</id>
+  		<name>apsu.be repository</name>
+  		<url>file:///websites/maven.apsu.be/htdocs</url>
+  	</snapshotRepository>
+  </distributionManagement>
+</project>
