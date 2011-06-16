@@ -38,9 +38,17 @@ public class SetAction extends Action
         variables.put("formattedValue", value);
 
         String on=substitutions(getOnTemplate(),variables);
+        
+        
+        
         if(getElement(on)!=null)
         {
+            //System.out.println("SETTING " + on + "=" + value);
             queueSet(on,substitutions(getValueTemplate(),variables));
+        }
+        else
+        {
+            System.out.println("FAILED " + on + "=" + value + " ; NOT FOUND");
         }
     }
 }

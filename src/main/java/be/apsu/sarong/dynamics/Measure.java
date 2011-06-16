@@ -38,7 +38,7 @@ public class Measure
 		captureNames=capturesStr.split(",");
 	}
 
-    public void evaluate(String label, String value)
+    public boolean evaluate(String label, String value)
     {
         Matcher matcher=pattern.matcher(label);
         if(matcher.matches())
@@ -51,12 +51,16 @@ public class Measure
                 for(int i=0;i<matcher.groupCount();i++)
                     variables.put(captureNames[i],matcher.group(i+1));
                 for(Action action: actions)
-                action.performAction(variables);
+                    action.performAction(variables);
             }
             catch(Exception ex)
             {
                 System.err.println(ex);
             }
+            
+            return true;
         }
+        
+        return false;
     }
 }
