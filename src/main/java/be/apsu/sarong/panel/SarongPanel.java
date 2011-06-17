@@ -72,48 +72,62 @@ public class SarongPanel
         return this;
     }
 
-    private void generateID(Node node, String prefix, String id)
+    private void generateIDs(Element element, String prefix)
     {
-        NamedNodeMap nodeAttr = node.getAttributes();
-        Node nodeClass = nodeAttr.getNamedItem("class");
-        if(nodeClass != null)
+        NodeList descendants = element.getElementsByTagName("*");
+        for (int i = 0; i < descendants.getLength(); i++)
         {
-            String nodeClassStr=nodeClass.getNodeValue();
-            if(nodeClassStr.startsWith(prefix))
-            {
-                Node nodeID = nodeAttr.getNamedItem("id");
-                String suffix = nodeClassStr.substring(prefix.length());
-                System.out.println(node.getNodeName() + " class " + nodeClassStr + " TO id " + id + suffix);
-                nodeID.setNodeValue(id + suffix);
-                nodeAttr.removeNamedItem("class");    
-            }
-            else if(nodeClassStr.equalsIgnoreCase("be.apsu.sarong.template"))
-            {
-                Node nodeID = nodeAttr.getNamedItem("id");
-                nodeID.setNodeValue(id);
-                nodeAttr.removeNamedItem("class");  
+            if (descendants.item(i).getNodeType() == Node.ELEMENT_NODE) {
+                // should be true for all descendants
+                Element descendant = (Element)descendants.item(i);
+                descendant.setAttribute("id", prefix + "." + descendant.getAttribute("id"));
             }
         }
+        element.setAttribute("id", prefix);
     }
-
-    private void generateIDs(Node node, String prefix, String id)
+    void replaceTemplate(Element clone, Element template)
     {
-        NodeList children = node.getChildNodes();
-        generateID(node, prefix, id);
-        for (int i = 0; i < children.getLength(); i++)
-        {
-            Node aNode = children.item(i);
-            if (aNode.hasChildNodes())
-            {
-                generateIDs(aNode, prefix, id);
-            }
-            else
-            {
-                generateID(node, prefix, id);
+        Element duplicate = (Element) template.cloneNode(true);
+        NamedNodeMap cloneAttr = clone.getAttributes();
+        if (cloneAttr.getNamedItem("transform") != null) {
+            Node duplicateTransformAttr = cloneAttr.getNamedItem("transform").cloneNode(true);
+            NamedNodeMap duplicateAttr = duplicate.getAttributes();
+            duplicateAttr.setNamedItem(duplicateTransformAttr);
+        }
+        generateIDs(duplicate, cloneAttr.getNamedItem("id").getNodeValue().toLowerCase());
+        Node parent = clone.getParentNode();
+        parent.replaceChild(duplicate, clone);
+    }
+    boolean replaceTemplates(Element element)
+    {
+        return replaceTemplates(element.getElementsByTagNameNS("http://www.w3.org/2000/svg", "use"));
+    }
+    boolean replaceTemplates(org.w3c.dom.Document document)
+    {
+        return replaceTemplates(document.getElementsByTagNameNS("http://www.w3.org/2000/svg", "use"));
+    }
+    boolean replaceTemplates(NodeList clones)
+    {
+        boolean templateReplaced = false;
+        for (int i = clones.getLength() - 1; i >= 0; i--) {
+            Element clone = (Element)clones.item(i);
+            if (clone != null) {
+                NamedNodeMap cloneAttr = clone.getAttributes();
+                Node cloneRefNode = cloneAttr.getNamedItemNS("http://www.w3.org/1999/xlink", "href");
+                if (cloneRefNode != null) {
+                    String cloneRef = cloneRefNode.getNodeValue().toLowerCase();
+                    if (cloneRef.startsWith("#")) {
+                        Element templateElement = document.getElementById(cloneRef.substring(1));
+                        if (templateElement != null && hasClass(templateElement, "be.apsu.sarong.template")) {
+                            replaceTemplate(clone,templateElement);
+                            templateReplaced = true;
+                        }
+                    }
+                }
             }
         }
+        return templateReplaced;
     }
-    
     void replaceTemplates()
     {
         queueUpdate(new Runnable()
@@ -121,59 +135,30 @@ public class SarongPanel
             @Override
             public void run()
             {
-                NodeList groups = document.getElementsByTagName("g");
-                for (int i = 0; i < groups.getLength(); i++)
+                // replace nested templates
+                boolean templateReplaced = true;
+                while(templateReplaced)
                 {
-                    Node group = groups.item(i);
-                    NamedNodeMap groupAttr = group.getAttributes();
-                    Node groupClass = groupAttr.getNamedItem("class");
-                    if (groupClass != null && groupClass.getNodeValue().equalsIgnoreCase("be.apsu.sarong.template"))
+                    templateReplaced = false;
+                    NodeList templateNodes = document.getElementsByTagName("*");
+                    for (int i = 0; i < templateNodes.getLength(); i++)
                     {
-                        templates.put(groupAttr.getNamedItem("id").getNodeValue().toLowerCase(), group);
-                    }
-                }
-
-                HashMap<Node, Node> replacements = new HashMap<Node, Node>();
-
-                NodeList clones = document.getElementsByTagNameNS("http://www.w3.org/2000/svg", "use");
-                for (int i = 0; i < clones.getLength(); i++)
-                {
-                    Node clone = clones.item(i);
-                    NamedNodeMap cloneAttr = clone.getAttributes();
-                    Node cloneRefNode = cloneAttr.getNamedItemNS("http://www.w3.org/1999/xlink", "href");
-                    if (cloneRefNode != null)
-                    {
-                        String cloneRef = cloneRefNode.getNodeValue().toLowerCase();
-                        if (cloneRef.startsWith("#"))
+                        Node templateNode = templateNodes.item(i);
+                        if (hasClass(templateNode,"be.apsu.sarong.template"))
                         {
-                            Node templateNode = templates.get(cloneRef.substring(1));
-                            Node duplicate = templateNode.cloneNode(true);
-                            
-                            Node cloneTransform = cloneAttr.getNamedItem("transform").cloneNode(true);
-                            NamedNodeMap duplicateAttr = duplicate.getAttributes();
-                            duplicateAttr.setNamedItem(cloneTransform);
-
-                            generateIDs(duplicate, "be.apsu.sarong.template." + cloneRef.substring(1), cloneAttr.getNamedItem("id").getNodeValue().toLowerCase());
-                            
-                            replacements.put(clone, duplicate);
+                            templateReplaced = templateReplaced || replaceTemplates((Element)templateNode);
                         }
                     }
                 }
 
-
-                for (Map.Entry<Node, Node> replacement : replacements.entrySet())
-                {
-                    Node victim = replacement.getKey();
-                    Node killer = replacement.getValue();
-                    Node parent = victim.getParentNode();
-                    parent.replaceChild(killer, victim);       
-                }
+                // replace clones
+                replaceTemplates(document);
                 
                 FileWriter writer=null;
                 
                 try
                 {
-                    writer=new FileWriter(new File("/tmp/result.svg"));
+                    writer=new FileWriter(new File("C:/Users/kdc/Sarong/result.svg"));
                     DOMUtilities.writeDocument(document, writer);
                 }
                 catch (IOException ex)
@@ -194,7 +179,13 @@ public class SarongPanel
             }
         });
     }
-
+    private boolean hasClass(Node templateNode, String className) {
+        try {
+            return templateNode.getAttributes().getNamedItem("class").getNodeValue().equalsIgnoreCase(className);
+        } catch (NullPointerException ex) {
+            return false;
+        }
+    }
     public SarongPanel(String name)
     {
         this.name = name;
@@ -222,7 +213,7 @@ public class SarongPanel
             {
                 super.svgLoadEventDispatchCompleted(e);
                 
-                //replaceTemplates();
+                replaceTemplates();
 
                 canvas.setEnableResetTransformInteractor(true);
                 for (Iterator<SarongPanelListener> i = listeners.iterator(); i.hasNext();)
