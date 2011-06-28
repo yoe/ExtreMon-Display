@@ -158,7 +158,7 @@ public class SarongPanel
                 
                 try
                 {
-                    writer=new FileWriter(new File("C:/Users/kdc/Sarong/result.svg"));
+                    writer=new FileWriter(new File("/tmp/new.svg"));
                     DOMUtilities.writeDocument(document, writer);
                 }
                 catch (IOException ex)
