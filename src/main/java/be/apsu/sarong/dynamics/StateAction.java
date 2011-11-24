@@ -1,6 +1,10 @@
 package be.apsu.sarong.dynamics;
 
+import be.apsu.sarong.common.AbstractElement;
 import java.util.Map;
+import org.apache.batik.dom.svg.SVGDOMImplementation;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 
 /**
  *
@@ -15,6 +19,64 @@ public class StateAction extends Action
         super(attribute,"",onTemplate);
         this.stateValues=stateValues;
     }
+    
+    public void animatedColor(final Element el, final String colors)
+	{
+		unanimateColor(el);
+		
+		queueUpdate(new Runnable()
+		{
+            @Override
+			public void run()
+			{
+				String svgNS=SVGDOMImplementation.SVG_NAMESPACE_URI;
+				Element animator=el.getOwnerDocument().createElementNS(svgNS,"animate");
+				animator.setAttributeNS(null,"id","colorAnimation."+el.getAttribute("id"));
+				animator.setAttributeNS(null,"attributeName",getAttribute());
+				animator.setAttributeNS(null,"values",colors);
+				animator.setAttributeNS(null,"dur","1s");
+				animator.setAttributeNS(null,"begin","0s");
+				animator.setAttributeNS(null,"repeatDur","indefinite");
+				animator.setAttributeNS(null,"calcMode","linear");
+
+				try
+				{
+					el.appendChild(animator);
+				}
+				catch(ClassCastException cce)
+				{
+					//System.err.println("Applied state to wrong type:"+cce.getMessage());
+				}
+			}
+		});
+	}
+
+	public void unanimateColor(final Element el)
+	{
+		queueUpdate(new Runnable()
+		{
+            @Override
+			public void run()
+			{
+				NodeList kids=el.getChildNodes();
+				for(int i=0;i<kids.getLength();i++)
+				{
+					try
+					{
+						Element victim=(Element)kids.item(i);
+						if(victim.getAttribute("id").equals("colorAnimation."+el.getAttribute("id")))
+						{
+							el.removeChild(victim);
+						}
+					}
+                    catch(ClassCastException cce)
+					{
+						//System.err.println("Applied state to wrong type:"+cce.getMessage());
+					}
+				}
+			}
+		});
+	}
 
     @Override
     public void performAction(Map variables)
@@ -25,18 +87,21 @@ public class StateAction extends Action
         String on=substitutions(getOnTemplate(),variables);
         
         int code=(int)dValue.intValue();
-        
         value=stateValues[code];
+        
+        
         //System.out.println("WANT TO SET " + on + "=" + value + " for state " + code);
         
-        if(getElement(on)!=null)
+        Element onElem=getElement(on);
+        
+        if(onElem!=null)
         {
-            System.out.println("SETTING " + on + "=" + value + " for state " + code);
-            queueSet(on,value);
+           // System.out.println("SETTING " + on + "=" + value + " for state " + code);
+            animatedColor(onElem,value);
         }
         else
         {
-            System.out.println("FAILED " + on + "=" + value + " ; NOT FOUND");
+            //System.out.println("FAILED " + on + "=" + value + " ; NOT FOUND");
         }
     }
 }

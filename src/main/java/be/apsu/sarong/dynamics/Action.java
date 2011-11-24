@@ -118,13 +118,18 @@ public abstract class Action
 	}
 
     public abstract void performAction(Map variables);
-
-    protected void queueSet(final String on, final String value)
+    
+    protected void queueUpdate(Runnable updateMethod)
     {
         if(getCanvas()==null)
 			return;
         
-        getCanvas().queueUpdate(new Runnable()
+        getCanvas().queueUpdate(updateMethod);
+    }
+
+    protected void queueSet(final String on, final String value)
+    {
+        queueUpdate(new Runnable()
         {
             @Override
             public void run()

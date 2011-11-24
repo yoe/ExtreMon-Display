@@ -91,6 +91,7 @@ public abstract class AbstractElement
 		
 		queueUpdate(new Runnable()
 		{
+            @Override
 			public void run()
 			{
 				String svgNS=SVGDOMImplementation.SVG_NAMESPACE_URI;
@@ -119,6 +120,7 @@ public abstract class AbstractElement
 	{
 		queueUpdate(new Runnable()
 		{
+            @Override
 			public void run()
 			{
 				NodeList kids=getElement().getChildNodes();
