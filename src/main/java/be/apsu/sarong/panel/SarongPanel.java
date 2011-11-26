@@ -23,13 +23,20 @@ import java.awt.Color;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Set;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import org.apache.batik.dom.util.DOMUtilities;
 import org.apache.batik.swing.JSVGCanvas;
 import org.apache.batik.swing.gvt.AbstractImageZoomInteractor;
 import org.apache.batik.swing.gvt.AbstractPanInteractor;
@@ -47,7 +54,17 @@ import org.w3c.dom.svg.SVGDocument;
 
 public class SarongPanel
 {
-    private static final long           serialVersionUID = -6964246820463870400L;
+    private static final String SVG_ID = "id";
+    private static final String SVG_NS = "http://www.w3.org/2000/svg";
+    private static final String SVG_TRANSFORM = "transform";
+    private static final String SVG_USE = "use";
+    private static final String X3MON_ID = "id";
+    private static final String XLINK_HREF      = "href";
+    private static final String X3MON_TEMPLATE  = "template";
+    private static final String X3MON_NS    = "http://extremon.org/ns/extremon";
+    private static final String X3MON_USAGE     = "usage";
+    private static final String XLINK_NS_URL    = "http://www.w3.org/1999/xlink";
+    
     private String                      name;
     private SarongCanvas                canvas;
     private SVGDocument                 document;
@@ -79,9 +96,9 @@ public class SarongPanel
 //        }
 //        element.setAttribute("id", prefix);
 //    }
-//    void replaceTemplate(Element clone, Element template)
+//    void replaceTemplate(Element clone, Element original)
 //    {
-//        Element duplicate = (Element) template.cloneNode(true);
+//        Element duplicate = (Element) original.cloneNode(true);
 //        NamedNodeMap cloneAttr = clone.getAttributes();
 //        if (cloneAttr.getNamedItem("transform") != null) {
 //            Node duplicateTransformAttr = cloneAttr.getNamedItem("transform").cloneNode(true);
@@ -115,7 +132,7 @@ public class SarongPanel
 //                    String cloneRef = cloneRefNode.getNodeValue().toLowerCase();
 //                    if (cloneRef.startsWith("#")) {
 //                        Element templateElement = document.getElementById(cloneRef.substring(1));
-//                        if (templateElement != null && hasClass(templateElement, "be.apsu.sarong.template")) {
+//                        if (templateElement != null && hasClass(templateElement, "be.apsu.sarong.original")) {
 //                            replaceTemplate(clone,templateElement);
 //                            templateReplaced = true;
 //                        }
@@ -142,7 +159,7 @@ public class SarongPanel
 //                    for (int i = 0; i < templateNodes.getLength(); i++)
 //                    {
 //                        Node templateNode = templateNodes.item(i);
-//                        if (hasClass(templateNode,"be.apsu.sarong.template"))
+//                        if (hasClass(templateNode,"be.apsu.sarong.original"))
 //                        {
 //                            templateReplaced = templateReplaced || replaceTemplates((Element)templateNode);
 //                        }
@@ -265,39 +282,7 @@ public class SarongPanel
         });        
     }
     
-    void _setFQids(Node node, int xmlLevel, List<String> path)
-    {
-        NamedNodeMap attr=node.getAttributes();
-        if(attr!=null && attr.getLength()>0)
-        {
-            Node idSliceN = node.getAttributes().getNamedItemNS("http://extremon.org/ns/extremon","idslice");
-            if(idSliceN!=null)
-            {
-                String idslice=idSliceN.getNodeValue();
-                if(path.size()<=xmlLevel)
-                    for(int i=-2;i<=(xmlLevel-path.size());i++)
-                        path.add(null);
-                path.set(xmlLevel, idslice);
-                liveElements.put(njoin(path,xmlLevel+1,"."),(Element)node); 
-                System.out.println(njoin(path,xmlLevel+1,"."));
-            }
-        }
-
-        NodeList kids=node.getChildNodes();
-        if(kids.getLength()>0)
-        {
-            for(int i=0;i<kids.getLength();i++)
-            {
-                Node kid=kids.item(i); 
-                _setFQids(kid,xmlLevel+1,path);
-            }
-        }
-    }
-     
-    void setFQids()
-    {
-        _setFQids(document,0,new ArrayList<String>());       
-    }
+   
     
     public SarongPanel(String name)
     {
@@ -324,7 +309,32 @@ public class SarongPanel
             {
                 super.svgLoadEventDispatchCompleted(e);
                 
-                setFQids();
+                materializeTemplateUsages();
+                removeTemplates();
+                registerLiveElements();
+                
+                FileWriter writer=null;
+                
+                try
+                {
+                    writer=new FileWriter(new File("/tmp/new.svg"));
+                    DOMUtilities.writeDocument(document, writer);
+                }
+                catch (IOException ex)
+                {
+                    Logger.getLogger(SarongPanel.class.getName()).log(Level.SEVERE, null, ex);
+                }
+                finally
+                {
+                    try
+                    {
+                        writer.close();
+                    }
+                    catch (IOException ex)
+                    {
+                        Logger.getLogger(SarongPanel.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                } 
 
                 canvas.setEnableResetTransformInteractor(true);
                 
@@ -418,5 +428,176 @@ public class SarongPanel
         canvas.getUpdateManager().
                 getUpdateRunnableQueue().
                 invokeLater(updater);
+    }
+    
+    private void _registerLiveElements(Node node, int xmlLevel, List<String> path)
+    {
+        String idSlice=getX3MonId(node);
+        if(idSlice!=null)
+        {       
+            while(path.size()<(xmlLevel+1))
+                path.add(null);
+
+            path.set(xmlLevel, idSlice);
+
+            if(!node.getNodeName().equalsIgnoreCase("g"))
+            {
+                liveElements.put(njoin(path,xmlLevel+1,"."),(Element)node); 
+                System.out.println("[" + node.getNodeName() + "] " + njoin(path,xmlLevel+1,".") + " (" + getAttr(node, SVG_ID) + ")");
+            }
+        }
+
+        NodeList kids=node.getChildNodes();
+        for(int i=0;i<kids.getLength();i++)
+            _registerLiveElements(kids.item(i),xmlLevel+1,path);
+        
+         while(path.size()>(xmlLevel))
+            path.remove(path.size()-1);
+    }
+    
+    private void registerLiveElements()
+    {
+        _registerLiveElements(document,0,new ArrayList<String>());
+        for(Entry<String,Element> liveElement:liveElements.entrySet())
+            liveElement.getValue().setAttribute(SVG_ID,liveElement.getKey());
+    }
+
+    private void _removeTemplates(Node node)
+    {
+        if(isX3MonTemplate(node))
+            node.getParentNode().removeChild(node);
+        NodeList kids=node.getChildNodes();
+        for(int i=0;i<kids.getLength();i++)
+            _removeTemplates(kids.item(i));
+    }
+    
+    private void removeTemplates()
+    {
+        _removeTemplates(document);               
+    }
+    
+    private void _materializeTemplateUsages(Node node)
+    {
+        String idSlice=getX3MonId(node);
+        if(idSlice!=null)
+        {
+            if(node.getNodeName().equals(SVG_USE))
+            {
+                String originalId=getAttrNS(node, XLINK_NS_URL, XLINK_HREF);
+                if(originalId!=null)
+                {
+                    Node original=document.getElementById(originalId.substring(1));
+                    if(original!=null && isX3MonTemplate(original))
+                    {
+                        Node materialNode=original.cloneNode(true);
+                        removeAttribute(materialNode,SVG_ID);
+                        removeAttributeNS(materialNode,X3MON_NS,X3MON_USAGE);
+                        cloneAttribute(node,materialNode,SVG_TRANSFORM);
+                        cloneAttributeNS(node,materialNode,X3MON_NS,X3MON_ID);
+                        node.getParentNode().replaceChild(materialNode,node);
+                    }
+                }
+            }
+        }
+
+        NodeList kids=node.getChildNodes();
+        for(int i=0;i<kids.getLength();i++)
+            _materializeTemplateUsages(kids.item(i));
+    }
+     
+    private void materializeTemplateUsages()
+    {
+        _materializeTemplateUsages(document);               
+    }
+    
+    private String getAttr(Node node, String attrName)
+    { 
+        NamedNodeMap attrNodeMap=node.getAttributes();
+        if(attrNodeMap==null)
+            return null;
+        Node valueNode = attrNodeMap.getNamedItem(attrName);
+        if(valueNode==null)
+            return null;
+        return valueNode.getNodeValue();
+    }
+    
+    private boolean setAttr(Node node, String attrName, String attrValue)
+    { 
+        NamedNodeMap attrNodeMap=node.getAttributes();
+        if(attrNodeMap==null)
+            return false;
+        
+        Node valueNode = attrNodeMap.getNamedItem(attrName);
+        if(valueNode==null)
+            return false;
+        
+        valueNode.setNodeValue(attrValue);
+
+        return true;
+    }
+    
+    private String getAttrNS(Node node, String nameSpace, String attrName)
+    { 
+        NamedNodeMap attrNode=node.getAttributes();
+        if(attrNode==null)
+            return null;
+        Node valueNode = attrNode.getNamedItemNS(nameSpace,attrName);
+        if(valueNode==null)
+            return null;
+        return valueNode.getNodeValue();
+    }
+    
+    private String getX3MonAttr(Node node, String attrName)
+    { 
+        return getAttrNS(node,X3MON_NS,attrName);
+    }
+    
+    private String getX3MonId(Node node)
+    {
+        return getX3MonAttr(node, X3MON_ID);
+    }
+    
+    private boolean isX3MonUsage(Node node, String usage)
+    {
+        String x3MonUsage=getX3MonAttr(node,X3MON_USAGE);
+        if(x3MonUsage==null)
+            return false;
+        return x3MonUsage.contains(usage);
+    }
+    
+    private boolean isX3MonTemplate(Node node)
+    {
+        boolean is=isX3MonUsage(node, X3MON_TEMPLATE);
+        return is;
+    }
+    
+    private void cloneAttribute(Node source, Node destination, String attrName)
+    {
+        Node attrNode = source.getAttributes().getNamedItem(attrName);
+        if(attrNode!=null)
+            destination.getAttributes().setNamedItem(attrNode.cloneNode(true));
+    }
+    
+    private void cloneAttributeNS(Node source, Node destination, String nameSpace, String attrName)
+    {
+        Node attrNode = source.getAttributes().getNamedItemNS(nameSpace, attrName);
+        if(attrNode!=null)
+            destination.getAttributes().setNamedItemNS(attrNode.cloneNode(true));
+    }
+    
+    private void removeAttribute(Node node, String attrName)
+    {
+        NamedNodeMap attrNode=node.getAttributes();
+        if(attrNode==null)
+            return;
+        attrNode.removeNamedItem(attrName);
+    }
+    
+    private void removeAttributeNS(Node node, String nameSpace, String attrName)
+    {
+        NamedNodeMap attrNode=node.getAttributes();
+        if(attrNode==null)
+            return;
+        attrNode.removeNamedItemNS(nameSpace, attrName);
     }
 }
