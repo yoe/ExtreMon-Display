@@ -3,6 +3,7 @@ package be.apsu.sarong.test;
 import be.apsu.sarong.dynamics.Action;
 import be.apsu.sarong.dynamics.Measure;
 import be.apsu.sarong.dynamics.SetAction;
+import be.apsu.sarong.dynamics.TimestampAction;
 import be.apsu.sarong.panel.SarongPanel;
 import be.apsu.sarong.panel.SarongPanelListener;
 import java.net.MalformedURLException;
@@ -35,16 +36,18 @@ public class SarongTest implements SarongPanelListener, CommonRailClientListener
 
         measures=new ArrayList<Measure>();
 
-      /*  measure=new Measure("^be\\.apsu\\.([0-9a-z]+)\\.cpu\\.([0-9]+)\\.cpu\\.(user|nice|system|idle|wait|interrupt|softirq|steal)\\.value$");
-        measure.setCaptures("host,cpu,type");
-        action=new SetAction("width","${value}","cpu.core.${cpu}.${type}.bar");
-        action.setPanel(panel);
-        measure.addAction(action);
-        action=new SetAction("cdata","${type} ${formattedValue} %","cpu.core.${cpu}.${type}.span");
-        action.setFormat("%.0f");
-        action.setPanel(panel);
-        measure.addAction(action);
-        measures.add(measure);
+//        measure=new Measure("^be\\.apsu\\.([0-9a-z]+)\\.cpu\\.([0-9]+)\\.cpu\\.(user|nice|system|idle|wait|interrupt|softirq|steal)\\.value$");
+//        measure.setCaptures("host,cpu,type");
+//        action=new SetAction("width","${value}","cpu.core.${cpu}.${type}.bar");
+//        action.setPanel(panel);
+//        measure.addAction(action);
+//        action=new SetAction("cdata","${type} ${formattedValue} %","cpu.core.${cpu}.${type}.span");
+//        action.setFormat("%.0f");
+//        action.setPanel(panel);
+//        measure.addAction(action);
+//        measures.add(measure);
+        
+        
         
         measure=new Measure("^(be.fedict.eid.[a-z]+).dispatcher.timestamp$");
         measure.setCaptures("host");
@@ -55,6 +58,8 @@ public class SarongTest implements SarongPanelListener, CommonRailClientListener
         action.setPanel(panel);
         measure.addAction(action);
         measures.add(measure);
+        
+        /*
         
         measure=new Measure("^be.fedict.eid.([a-z0-9.]+).tslprobe.validityleft$");
         measure.setCaptures("host");
@@ -207,17 +212,42 @@ public class SarongTest implements SarongPanelListener, CommonRailClientListener
         measures.add(measure); */
         
 //                          //be.fedict.eid.prod     .pkiramod.app1       .df.boot    .df_complex.reserved.percentage
-        measure=new Measure("^be.fedict.eid.(prod).(pkiramod).(app1).df.([a-z]+).df_complex.(free|used|reserved).percentage$");
+        measure=new Measure("^be.fedict.eid.(prod|ta|int).(dss|pkiramod|idp|pkirapor|trust).(app[0-9]).df.([a-z]+).df_complex.(free|used|reserved).percentage$");
 //        measure=new Measure("^be.fedict.eid.(prod|ta).(pkiramod).(app1).df.([a-z]+).df_complex.(free|used|reserved).percentage$");
         measure.setCaptures("env,app,host,mountpoint,metric");
-        action=new SetAction("cdata","${formattedValue} %","be.fedict.eid.${env}.${app}.${host}.df.${mountpoint}.df_complex.${metric}.percentage.span");
+        action=new SetAction("cdata","${formattedValue} %","be.fedict.eid.${env}.${app}.${host}.df.${mountpoint}.${metric}.percentage.span");
         action.setFormat("%.0f");
         action.setPanel(panel);
         measure.addAction(action);
+        action=new SetAction("width","${formattedValue}","be.fedict.eid.${env}.${app}.${host}.df.${mountpoint}.${metric}.percentage.bar");
+        action.setPanel(panel);
+        measure.addAction(action);  
+        measures.add(measure);
+        
+        measure=new Measure("^be.fedict.eid.(prod|ta|int).(dss|pkiramod|idp|pkirapor|trust).(app[0-9]).cpu.([0-9]+).cpu.(idle|interrupt|nice|softirq|steal|system|user|wait).value$");
+        measure.setCaptures("env,app,host,core,metric");
+        action=new SetAction("cdata","${formattedValue} % ${metric}","be.fedict.eid.${env}.${app}.${host}.cpu.${core}.cpu.${metric}.value.text");
+        action.setFormat("%.0f");
+        action.setPanel(panel);
+        measure.addAction(action);
+        action=new SetAction("width","${formattedValue}","be.fedict.eid.${env}.${app}.${host}.cpu.${core}.cpu.${metric}.value.bar");
+        action.setPanel(panel);
+        measure.addAction(action);  
+        measures.add(measure);
+        
+        measure=new Measure("^be.fedict.eid.(eridu|badtibira|tristan|isolde).cpu.([0-9]+).cpu.(idle|interrupt|nice|softirq|steal|system|user|wait).value$");
+        measure.setCaptures("host,core,metric");
+        action=new SetAction("cdata","${formattedValue} % ${metric}","be.fedict.eid.${host}.cpu.${core}.cpu.${metric}.value.text");
+        action.setFormat("%.0f");
+        action.setPanel(panel);
+        measure.addAction(action);
+        action=new SetAction("width","${formattedValue}","be.fedict.eid.${host}.cpu.${core}.cpu.${metric}.value.bar");
+        action.setPanel(panel);
+        measure.addAction(action);  
         measures.add(measure);
         
         
-        panel.setURI("file:///data/eid_prod_experiment.svg");
+        panel.setURI("file:///data/eid_prod_2011_11_27_0000.svg");
     }
 
     public static void main(String[] args)
@@ -232,7 +262,7 @@ public class SarongTest implements SarongPanelListener, CommonRailClientListener
     	
 		try
 		{
-			client.addServer(new URL("https://fed0.extremon.net/eid"));
+			client.addServer(new URL("https://fed1.extremon.net/eid"));
 			client.setListener(this);
             //client.setProxy("proxy.yourict.net", 8080);
 			client.start();

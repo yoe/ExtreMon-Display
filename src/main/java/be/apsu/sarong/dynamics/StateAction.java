@@ -1,6 +1,5 @@
 package be.apsu.sarong.dynamics;
 
-import be.apsu.sarong.common.AbstractElement;
 import java.util.Map;
 import org.apache.batik.dom.svg.SVGDOMImplementation;
 import org.w3c.dom.Element;

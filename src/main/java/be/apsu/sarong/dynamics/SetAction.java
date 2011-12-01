@@ -39,18 +39,11 @@ public class SetAction extends Action
 
         String on=substitutions(getOnTemplate(),variables);
         
-        
-        
         if(getElement(on)!=null)
         {
            // if(on.startsWith("be.fedict.eid.prod"))
             //    System.out.println("SETTING " + on + "=" + value);
             queueSet(on,substitutions(getValueTemplate(),variables));
-        }
-        else
-        {
-           if(on.contains("percentage"))
-               System.out.println("**** FAILED " + on + "=" + value + " ; NOT FOUND"); 
         }
     }
 }

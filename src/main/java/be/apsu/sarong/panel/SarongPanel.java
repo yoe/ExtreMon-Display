@@ -54,22 +54,22 @@ import org.w3c.dom.svg.SVGDocument;
 
 public class SarongPanel
 {
+
     private static final String SVG_ID = "id";
     private static final String SVG_NS = "http://www.w3.org/2000/svg";
     private static final String SVG_TRANSFORM = "transform";
     private static final String SVG_USE = "use";
     private static final String X3MON_ID = "id";
-    private static final String XLINK_HREF      = "href";
-    private static final String X3MON_TEMPLATE  = "template";
-    private static final String X3MON_NS    = "http://extremon.org/ns/extremon";
-    private static final String X3MON_USAGE     = "usage";
-    private static final String XLINK_NS_URL    = "http://www.w3.org/1999/xlink";
-    
-    private String                      name;
-    private SarongCanvas                canvas;
-    private SVGDocument                 document;
-    private Set<SarongPanelListener>    listeners;
-    private HashMap<String,Element>     liveElements;
+    private static final String XLINK_HREF = "href";
+    private static final String X3MON_TEMPLATE = "template";
+    private static final String X3MON_NS = "http://extremon.org/ns/extremon";
+    private static final String X3MON_USAGE = "usage";
+    private static final String XLINK_NS_URL = "http://www.w3.org/1999/xlink";
+    private String name;
+    private SarongCanvas canvas;
+    private SVGDocument document;
+    private Set<SarongPanelListener> listeners;
+    private HashMap<String, Element> liveElements;
 
     public SarongPanel addKeyListener(KeyListener keyListener)
     {
@@ -206,84 +206,88 @@ public class SarongPanel
 //            return false;
 //        }
 //    }
-    
-    
     Element createDescription(String text)
     {
-        Element description=document.createElementNS("http://www.w3.org/2000/svg","desc");
-        Text    descriptionText=document.createTextNode(text);
+        Element description = document.createElementNS("http://www.w3.org/2000/svg", "desc");
+        Text descriptionText = document.createTextNode(text);
         description.appendChild(descriptionText);
         return description;
     }
-    
-    public static String join( Iterable< ? extends Object > pColl, String separator )
+
+    public static String join(Iterable< ? extends Object> pColl, String separator)
     {
-        Iterator< ? extends Object > oIter;
-        if ( pColl == null || ( !( oIter = pColl.iterator() ).hasNext() ) )
+        Iterator< ? extends Object> oIter;
+        if (pColl == null || (!(oIter = pColl.iterator()).hasNext()))
+        {
             return "";
-        StringBuilder oBuilder = new StringBuilder( String.valueOf( oIter.next() ) );
-        while ( oIter.hasNext() )
-            oBuilder.append( separator ).append( oIter.next() );
+        }
+        StringBuilder oBuilder = new StringBuilder(String.valueOf(oIter.next()));
+        while (oIter.hasNext())
+        {
+            oBuilder.append(separator).append(oIter.next());
+        }
         return oBuilder.toString();
     }
-    
-    public static String njoin(List<String> list, int count, String separator )
+
+    public static String njoin(List<String> list, int count, String separator)
     {
-        StringBuilder builder=new StringBuilder();
-        
-        if(count>list.size())
-            count=list.size();
-        
-        for(int i=0;i<count;i++)
+        StringBuilder builder = new StringBuilder();
+
+        if (count > list.size())
         {
-            String slice=list.get(i);
-            if(slice!=null)
+            count = list.size();
+        }
+
+        for (int i = 0; i < count; i++)
+        {
+            String slice = list.get(i);
+            if (slice != null)
             {
                 builder.append('.');
-                builder.append(slice);  
+                builder.append(slice);
             }
         }
-        
+
         return builder.toString().substring(1);
     }
 
-    
     void generateTooltips()
     {
         queueUpdate(new Runnable()
         {
+
             @Override
             public void run()
             {
                 NodeList allNodes = document.getElementsByTagName("*");
                 for (int i = 0; i < allNodes.getLength(); i++)
                 {
-                    Node node=allNodes.item(i);
-                    Node    idNode = node.getAttributes().getNamedItem("id");
-                    if(idNode!=null)
+                    Node node = allNodes.item(i);
+                    Node idNode = node.getAttributes().getNamedItem("id");
+                    if (idNode != null)
                     {
-                        String id=idNode.getNodeValue();
-                        String[] idParts=id.split("\\.");
-                        
-                        if(idParts.length>4)
+                        String id = idNode.getNodeValue();
+                        String[] idParts = id.split("\\.");
+
+                        if (idParts.length > 4)
                         {
                             System.err.println("creating description for " + id);
-                            Element desc=createDescription(id.substring(0,id.lastIndexOf('.')));
-                            
-                            Element element=(Element)node;
-                            NodeList descriptions=element.getElementsByTagName("desc");
-                            if(descriptions.getLength()>0)
+                            Element desc = createDescription(id.substring(0, id.lastIndexOf('.')));
+
+                            Element element = (Element) node;
+                            NodeList descriptions = element.getElementsByTagName("desc");
+                            if (descriptions.getLength() > 0)
+                            {
                                 element.removeChild(descriptions.item(0));
-                            node.appendChild(desc); 
+                            }
+                            node.appendChild(desc);
                         }
                     }
                 }
             }
-        });        
+        });
     }
-    
-   
-    
+
     public SarongPanel(String name)
     {
         this.name = name;
@@ -291,16 +295,17 @@ public class SarongPanel
         this.canvas.setDocumentState(JSVGCanvas.ALWAYS_DYNAMIC);
         this.canvas.setAnimationLimitingNone();
         this.canvas.setBackground(Color.black);
-        this.listeners      = new HashSet<SarongPanelListener>();
-        this.liveElements   = new HashMap<String, Element>();
+        this.listeners = new HashSet<SarongPanelListener>();
+        this.liveElements = new HashMap<String, Element>();
 
         this.canvas.addSVGLoadEventDispatcherListener(new SVGLoadEventDispatcherAdapter()
         {
+
             @Override
             public void svgLoadEventDispatchStarted(SVGLoadEventDispatcherEvent e)
             {
                 super.svgLoadEventDispatchCompleted(e);
-                document = canvas.getSVGDocument();    
+                document = canvas.getSVGDocument();
             }
 
             @SuppressWarnings("unchecked")
@@ -308,16 +313,16 @@ public class SarongPanel
             public void svgLoadEventDispatchCompleted(SVGLoadEventDispatcherEvent e)
             {
                 super.svgLoadEventDispatchCompleted(e);
-                
-                materializeTemplateUsages();
-                removeTemplates();
-                registerLiveElements();
-                
-                FileWriter writer=null;
-                
+
+                materializeTemplateUsages(document);
+                removeTemplates(document);
+                registerLiveElements(document);
+
+                FileWriter writer = null;
+
                 try
                 {
-                    writer=new FileWriter(new File("/tmp/new.svg"));
+                    writer = new FileWriter(new File("/tmp/new.svg"));
                     DOMUtilities.writeDocument(document, writer);
                 }
                 catch (IOException ex)
@@ -334,10 +339,10 @@ public class SarongPanel
                     {
                         Logger.getLogger(SarongPanel.class.getName()).log(Level.SEVERE, null, ex);
                     }
-                } 
+                }
 
                 canvas.setEnableResetTransformInteractor(true);
-                
+
                 for (Iterator<SarongPanelListener> i = listeners.iterator(); i.hasNext();)
                 {
                     i.next().panelReady(SarongPanel.this);
@@ -412,192 +417,180 @@ public class SarongPanel
 
     public Element getElementById(String id)
     {
-        if(document==null || liveElements==null)
+        if (document == null || liveElements == null)
             return null;
-        Element element=liveElements.get(id);
-        if(element==null)
-            System.out.println(id);
-        return element;
+        return liveElements.get(id);
     }
 
     public void queueUpdate(Runnable updater)
     {
-        if (canvas.getUpdateManager()==null)
+        if (canvas.getUpdateManager() == null)
+        {
             return;
-        
+        }
+
         canvas.getUpdateManager().
                 getUpdateRunnableQueue().
                 invokeLater(updater);
     }
-    
+
     private void _registerLiveElements(Node node, int xmlLevel, List<String> path)
     {
-        String idSlice=getX3MonId(node);
-        if(idSlice!=null)
-        {       
-            while(path.size()<(xmlLevel+1))
+        String idSlice = getX3MonId(node);
+        if (idSlice != null)
+        {
+            while(path.size()<(xmlLevel + 1))
                 path.add(null);
 
             path.set(xmlLevel, idSlice);
 
             if(!node.getNodeName().equalsIgnoreCase("g"))
             {
-                liveElements.put(njoin(path,xmlLevel+1,"."),(Element)node); 
-                System.out.println("[" + node.getNodeName() + "] " + njoin(path,xmlLevel+1,".") + " (" + getAttr(node, SVG_ID) + ")");
+                liveElements.put(njoin(path, xmlLevel + 1, "."), (Element) node);
+                System.out.println("[" + node.getNodeName() + "] " + njoin(path, xmlLevel + 1, ".") + " (" + getAttr(node, SVG_ID) + ")");
             }
         }
 
-        NodeList kids=node.getChildNodes();
+        NodeList kids = node.getChildNodes();
         for(int i=0;i<kids.getLength();i++)
             _registerLiveElements(kids.item(i),xmlLevel+1,path);
-        
-         while(path.size()>(xmlLevel))
+
+        while(path.size()>(xmlLevel))
             path.remove(path.size()-1);
     }
-    
-    private void registerLiveElements()
+
+    private void registerLiveElements(Node node)
     {
-        _registerLiveElements(document,0,new ArrayList<String>());
-        for(Entry<String,Element> liveElement:liveElements.entrySet())
-            liveElement.getValue().setAttribute(SVG_ID,liveElement.getKey());
+        _registerLiveElements(node, 0, new ArrayList<String>());
+        for (Entry<String, Element> liveElement : liveElements.entrySet())
+            liveElement.getValue().setAttribute(SVG_ID, liveElement.getKey());
     }
 
-    private void _removeTemplates(Node node)
+    private void removeTemplates(Node node)
     {
-        if(isX3MonTemplate(node))
+        if (isX3MonTemplate(node))
             node.getParentNode().removeChild(node);
-        NodeList kids=node.getChildNodes();
-        for(int i=0;i<kids.getLength();i++)
-            _removeTemplates(kids.item(i));
+        NodeList kids = node.getChildNodes();
+        for (int i = 0; i < kids.getLength(); i++)
+            removeTemplates(kids.item(i));
     }
-    
-    private void removeTemplates()
+
+    private void materializeTemplateUsages(Node node)
     {
-        _removeTemplates(document);               
-    }
-    
-    private void _materializeTemplateUsages(Node node)
-    {
-        String idSlice=getX3MonId(node);
-        if(idSlice!=null)
+        if(node.getNodeName().equals(SVG_USE))
         {
-            if(node.getNodeName().equals(SVG_USE))
+            String originalId = getAttrNS(node, XLINK_NS_URL, XLINK_HREF);
+            if (originalId != null)
             {
-                String originalId=getAttrNS(node, XLINK_NS_URL, XLINK_HREF);
-                if(originalId!=null)
+                Node original = document.getElementById(originalId.substring(1));
+                if (original != null && isX3MonTemplate(original))
                 {
-                    Node original=document.getElementById(originalId.substring(1));
-                    if(original!=null && isX3MonTemplate(original))
-                    {
-                        Node materialNode=original.cloneNode(true);
-                        removeAttribute(materialNode,SVG_ID);
-                        removeAttributeNS(materialNode,X3MON_NS,X3MON_USAGE);
-                        cloneAttribute(node,materialNode,SVG_TRANSFORM);
-                        cloneAttributeNS(node,materialNode,X3MON_NS,X3MON_ID);
-                        node.getParentNode().replaceChild(materialNode,node);
-                    }
+                    Node materialNode = original.cloneNode(true);
+                    removeAttribute(materialNode, SVG_ID);
+                    removeAttributeNS(materialNode, X3MON_NS, X3MON_USAGE);
+                    cloneAttribute(node, materialNode, SVG_TRANSFORM);
+                    cloneAttributeNS(node, materialNode, X3MON_NS, X3MON_ID);
+                    node.getParentNode().replaceChild(materialNode, node);
                 }
             }
         }
 
-        NodeList kids=node.getChildNodes();
-        for(int i=0;i<kids.getLength();i++)
-            _materializeTemplateUsages(kids.item(i));
+        NodeList kids = node.getChildNodes();
+        for (int i = 0; i < kids.getLength(); i++)
+            materializeTemplateUsages(kids.item(i));
     }
-     
-    private void materializeTemplateUsages()
-    {
-        _materializeTemplateUsages(document);               
-    }
-    
-    private String getAttr(Node node, String attrName)
-    { 
-        NamedNodeMap attrNodeMap=node.getAttributes();
-        if(attrNodeMap==null)
-            return null;
-        Node valueNode = attrNodeMap.getNamedItem(attrName);
-        if(valueNode==null)
-            return null;
-        return valueNode.getNodeValue();
-    }
-    
-    private boolean setAttr(Node node, String attrName, String attrValue)
-    { 
-        NamedNodeMap attrNodeMap=node.getAttributes();
-        if(attrNodeMap==null)
-            return false;
-        
-        Node valueNode = attrNodeMap.getNamedItem(attrName);
-        if(valueNode==null)
-            return false;
-        
-        valueNode.setNodeValue(attrValue);
 
-        return true;
-    }
-    
-    private String getAttrNS(Node node, String nameSpace, String attrName)
-    { 
-        NamedNodeMap attrNode=node.getAttributes();
-        if(attrNode==null)
+    private String getAttr(Node node, String attrName)
+    {
+        NamedNodeMap attrNodeMap = node.getAttributes();
+        if (attrNodeMap == null)
+        {
             return null;
-        Node valueNode = attrNode.getNamedItemNS(nameSpace,attrName);
-        if(valueNode==null)
+        }
+        Node valueNode = attrNodeMap.getNamedItem(attrName);
+        if (valueNode == null)
+        {
             return null;
+        }
         return valueNode.getNodeValue();
     }
-    
-    private String getX3MonAttr(Node node, String attrName)
-    { 
-        return getAttrNS(node,X3MON_NS,attrName);
+
+    private String getAttrNS(Node node, String nameSpace, String attrName)
+    {
+        NamedNodeMap attrNode = node.getAttributes();
+        if (attrNode == null)
+        {
+            return null;
+        }
+        Node valueNode = attrNode.getNamedItemNS(nameSpace, attrName);
+        if (valueNode == null)
+        {
+            return null;
+        }
+        return valueNode.getNodeValue();
     }
-    
+
+    private String getX3MonAttr(Node node, String attrName)
+    {
+        return getAttrNS(node, X3MON_NS, attrName);
+    }
+
     private String getX3MonId(Node node)
     {
         return getX3MonAttr(node, X3MON_ID);
     }
-    
+
     private boolean isX3MonUsage(Node node, String usage)
     {
-        String x3MonUsage=getX3MonAttr(node,X3MON_USAGE);
-        if(x3MonUsage==null)
+        String x3MonUsage = getX3MonAttr(node, X3MON_USAGE);
+        if (x3MonUsage == null)
+        {
             return false;
+        }
         return x3MonUsage.contains(usage);
     }
-    
+
     private boolean isX3MonTemplate(Node node)
     {
-        boolean is=isX3MonUsage(node, X3MON_TEMPLATE);
+        boolean is = isX3MonUsage(node, X3MON_TEMPLATE);
         return is;
     }
-    
+
     private void cloneAttribute(Node source, Node destination, String attrName)
     {
         Node attrNode = source.getAttributes().getNamedItem(attrName);
-        if(attrNode!=null)
+        if (attrNode != null)
+        {
             destination.getAttributes().setNamedItem(attrNode.cloneNode(true));
+        }
     }
-    
+
     private void cloneAttributeNS(Node source, Node destination, String nameSpace, String attrName)
     {
         Node attrNode = source.getAttributes().getNamedItemNS(nameSpace, attrName);
-        if(attrNode!=null)
+        if (attrNode != null)
+        {
             destination.getAttributes().setNamedItemNS(attrNode.cloneNode(true));
+        }
     }
-    
+
     private void removeAttribute(Node node, String attrName)
     {
-        NamedNodeMap attrNode=node.getAttributes();
-        if(attrNode==null)
+        NamedNodeMap attrNode = node.getAttributes();
+        if (attrNode == null)
+        {
             return;
+        }
         attrNode.removeNamedItem(attrName);
     }
-    
+
     private void removeAttributeNS(Node node, String nameSpace, String attrName)
     {
-        NamedNodeMap attrNode=node.getAttributes();
-        if(attrNode==null)
+        NamedNodeMap attrNode = node.getAttributes();
+        if (attrNode == null)
+        {
             return;
+        }
         attrNode.removeNamedItemNS(nameSpace, attrName);
     }
 }
