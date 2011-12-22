@@ -1,6 +1,5 @@
 package be.apsu.sarong.dynamics;
 
-import java.util.Calendar;
 import java.util.Map;
 import org.joda.time.Period;
 import org.joda.time.PeriodType;
@@ -33,18 +32,15 @@ public class DurationAction extends Action
     }
 
     @Override
-    public void performAction(Map variables)
+    public void performAction(Map<String,String> variables, double nValue, String sValue)
     {
-        long serverMillis=(long)(((Double)variables.get("value")).doubleValue()*1000);
-        
+    	if(sValue!=null)
+    		return;
+        long serverMillis=(long)(nValue*1000);
         Period period=new Period(serverMillis);
-
-        variables.put("formattedValue", formatter.print(period.normalizedStandard(PeriodType.yearWeekDayTime())));
-
-        String on=substitutions(getOnTemplate(),variables);
+        String formattedValue=formatter.print(period.normalizedStandard(PeriodType.yearWeekDayTime()));
+        String on=substitutions(getOnTemplate(),variables, formattedValue);
         if(getElement(on)!=null)
-        {
-            queueSet(on,substitutions(getValueTemplate(),variables));
-        }
+            queueSet(on,substitutions(getValueTemplate(),variables, formattedValue));
     }
 }

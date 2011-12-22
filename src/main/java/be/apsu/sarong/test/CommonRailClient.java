@@ -6,7 +6,9 @@ package be.apsu.sarong.test;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.Authenticator;
 import java.net.InetSocketAddress;
+import java.net.PasswordAuthentication;
 import java.net.Proxy;
 import java.net.Socket;
 import java.net.SocketAddress;
@@ -82,8 +84,11 @@ public class CommonRailClient implements Runnable
 		return this;
 	}
 
+    @Override
 	public void run()
 	{
+        Authenticator.setDefault(new ExtremonAuthenticator());
+        
 		running=true;
 		while (running)
 		{
@@ -94,6 +99,7 @@ public class CommonRailClient implements Runnable
 
 				try
 				{
+                    
                     URLConnection connection=server.openConnection(this.proxy);
 					reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
 					listener.commonRailConnected(server);
@@ -135,4 +141,13 @@ public class CommonRailClient implements Runnable
 			}
 		}
 	}
+
+    private class ExtremonAuthenticator extends Authenticator
+    {
+        @Override
+        public PasswordAuthentication getPasswordAuthentication ()
+        {
+            return new PasswordAuthentication ("frankm","145boo".toCharArray());
+        }
+    }
 }

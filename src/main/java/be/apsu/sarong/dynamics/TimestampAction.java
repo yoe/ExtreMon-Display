@@ -24,19 +24,22 @@ public class TimestampAction extends Action
     }
 
     @Override
-    public void performAction(Map variables)
+    public void performAction(Map<String,String> variables, double nValue, String sValue)
     {
-        long serverMillis=(long)(((Double)variables.get("value")).doubleValue()*1000);
+    	if(sValue!=null)
+    		return;
+    	
+        long serverMillis=(long)(nValue*1000);
         long clientMillis=System.currentTimeMillis();
         
         calendar.setTimeInMillis(serverMillis);
 
-        variables.put("formattedValue", format.format(calendar.getTime()) + (calendar.get(Calendar.MILLISECOND)/100) + " (" + lagFormat.format(serverMillis-clientMillis) + "ms)");
+        String formattedValue=format.format(calendar.getTime()) + (calendar.get(Calendar.MILLISECOND)/100) + " (" + lagFormat.format(serverMillis-clientMillis) + "ms)";
 
-        String on=substitutions(getOnTemplate(),variables);
+        String on=substitutions(getOnTemplate(),variables, formattedValue);
         if(getElement(on)!=null)
         {
-            queueSet(on,substitutions(getValueTemplate(),variables));
+            queueSet(on,substitutions(getValueTemplate(),variables,formattedValue));
         }
     }
 }

@@ -38,29 +38,46 @@ public class Measure
 		captureNames=capturesStr.split(",");
 	}
 
-    public boolean evaluate(String label, String value)
+    public Map<String,String> evaluate(String label, String value)
     {
         Matcher matcher=pattern.matcher(label);
         if(matcher.matches())
         {
+            System.err.println("Matched Regex For " + label);
+            
             try
             {
-                Map variables=new HashMap(matcher.groupCount());
-                variables.put("id", label);
-                variables.put("value", new Double(value));
+                Map<String,String> variables=new HashMap<String,String>(matcher.groupCount());
+                variables.put("label", label);
                 for(int i=0;i<matcher.groupCount();i++)
                     variables.put(captureNames[i],matcher.group(i+1));
-                for(Action action: actions)
-                    action.performAction(variables);
+                return variables;   
             }
             catch(Exception ex)
             {
                 System.err.println(ex);
+                return null;
             }
-            
-            return true;
         }
         
-        return false;
+        return null;
+    }
+    
+    public void act(Map<String,String> variables, String value)
+    {
+    	String sValue=null;
+    	double dValue=Double.NaN;
+    
+    	try
+    	{
+    		dValue=Double.parseDouble(value);
+    	}
+    	catch(NumberFormatException nfe)
+    	{
+    		sValue=value;
+    	}
+
+    	for(Action action: actions)
+            action.performAction(variables,dValue,sValue);	
     }
 }

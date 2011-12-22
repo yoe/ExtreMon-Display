@@ -19,7 +19,7 @@ public class StateAction extends Action
         this.stateValues=stateValues;
     }
     
-    public void animatedColor(final Element el, final String colors)
+  /*  public void animatedColor(final Element el, final String colors)
 	{
 		unanimateColor(el);
 		
@@ -75,19 +75,16 @@ public class StateAction extends Action
 				}
 			}
 		});
-	}
+	} */
 
     @Override
-    public void performAction(Map variables)
+    public void performAction(Map<String,String> variables, double nValue, String sValue)
     {
-        String value=null;
-             
-        Double dValue=(Double)variables.get("value");
-        String on=substitutions(getOnTemplate(),variables);
-        
-        int code=(int)dValue.intValue();
-        value=stateValues[code];
-        
+    	if(sValue!=null)
+    		return;
+    	
+        String on=substitutions(getOnTemplate(),variables,null);
+        String value=stateValues[(int)nValue];
         
         //System.out.println("WANT TO SET " + on + "=" + value + " for state " + code);
         
@@ -95,8 +92,7 @@ public class StateAction extends Action
         
         if(onElem!=null)
         {
-           // System.out.println("SETTING " + on + "=" + value + " for state " + code);
-            animatedColor(onElem,value);
+        	queueSet(on,value);
         }
         else
         {

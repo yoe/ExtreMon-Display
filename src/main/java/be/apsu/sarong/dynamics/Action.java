@@ -98,26 +98,30 @@ public abstract class Action
         return getPanel().getElementById(id);
     }
     
-    protected String substitutions(String template,Map vars)
+    protected String substitutions(String template, Map<String,String> vars, String formattedValue)
 	{
+    	if(formattedValue!=null)
+    		template=template.replace("${formattedValue}",formattedValue);
+    	
 		for(Iterator<Entry<String,String>> iter=vars.entrySet().iterator();iter.hasNext();)
 		{
-			Entry var=iter.next();
+			Entry<String,String> var=iter.next();
 			try
 			{
 				template=template.replace("${"+var.getKey()+"}",(String)var.getValue());
 			}
-			catch(ClassCastException cce)
+			catch(Exception ex)
 			{
-				Double value=(Double)var.getValue();
-				template=template.replace("${"+var.getKey()+"}",String.valueOf(value));
+				template=template.replace("${"+var.getKey()+"}",ex.getLocalizedMessage());
 			}
 
 		}
+		
 		return template;
 	}
 
-    public abstract void performAction(Map variables);
+    public abstract void performAction(Map<String,String> variables, double nValue, String sValue);
+    
     
     protected void queueUpdate(Runnable updateMethod)
     {

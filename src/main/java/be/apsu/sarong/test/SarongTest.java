@@ -1,22 +1,29 @@
 package be.apsu.sarong.test;
 
 import be.apsu.sarong.dynamics.Action;
+import be.apsu.sarong.dynamics.DurationAction;
 import be.apsu.sarong.dynamics.Measure;
+import be.apsu.sarong.dynamics.MeasureCacheElement;
 import be.apsu.sarong.dynamics.SetAction;
+import be.apsu.sarong.dynamics.StateAction;
 import be.apsu.sarong.dynamics.TimestampAction;
 import be.apsu.sarong.panel.SarongPanel;
 import be.apsu.sarong.panel.SarongPanelListener;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
 import javax.swing.JFrame;
 
 public class SarongTest implements SarongPanelListener, CommonRailClientListener
 {
-    private SarongPanel     panel;
-    private JFrame          frame;
-    private List<Measure>   measures;
+    private SarongPanel     				panel;
+    private JFrame          				frame;
+    private List<Measure>   				measures;
+    private Map<String,MeasureCacheElement>	labelMeasureAssignments;
     
     public SarongTest()
     {
@@ -35,6 +42,7 @@ public class SarongTest implements SarongPanelListener, CommonRailClientListener
         
 
         measures=new ArrayList<Measure>();
+        labelMeasureAssignments=new HashMap<String,MeasureCacheElement>();
 
 //        measure=new Measure("^be\\.apsu\\.([0-9a-z]+)\\.cpu\\.([0-9]+)\\.cpu\\.(user|nice|system|idle|wait|interrupt|softirq|steal)\\.value$");
 //        measure.setCaptures("host,cpu,type");
@@ -49,24 +57,19 @@ public class SarongTest implements SarongPanelListener, CommonRailClientListener
         
         
         
-        measure=new Measure("^(be.fedict.eid.[a-z]+).dispatcher.timestamp$");
-        measure.setCaptures("host");
+        measure=new Measure("^(be.fedict.eid.mon.(eridu|badtibira|tristan|isolde)).dispatcher.timestamp$");
+        measure.setCaptures("fqhn,hostname");
         action=new TimestampAction("cdata","${formattedValue}","timestamp");
         measure.addAction(action);
         action.setPanel(panel);
-        action=new SetAction("cdata","${host}","host");
+        action=new SetAction("cdata","${hostname}","host");
         action.setPanel(panel);
         measure.addAction(action);
         measures.add(measure);
         
-        /*
+  
         
-        measure=new Measure("^be.fedict.eid.([a-z0-9.]+).tslprobe.validityleft$");
-        measure.setCaptures("host");
-        action=new DurationAction("cdata","${formattedValue}","be.fedict.eid.${host}.tslprobe.validityleft.span");
-        measure.addAction(action);
-        action.setPanel(panel);
-        measures.add(measure);
+ /*
         
         measure=new Measure("^be.fedict.eid.([a-z]+).trust.(validauthcertchain|revokedauthcertchain).xkms2probe.responsetime$");
         measure.setCaptures("environment,test");
@@ -99,18 +102,7 @@ public class SarongTest implements SarongPanelListener, CommonRailClientListener
         measure.addAction(action);
         measures.add(measure); 
         
-        // be.fedict.eid.tsl.belgium.be.tslprobe.responsetime
-        measure=new Measure("^be.fedict.eid.([a-z0-9.]+).tslprobe.responsetime$");
-        measure.setCaptures("host");
-        action=new SetAction("width","${formattedValue}","be.fedict.eid.${host}.tslprobe.responsetime.bar");
-        action.setMultiplier(.1);
-        action.setPanel(panel);
-        measure.addAction(action);
-        action=new SetAction("cdata","${formattedValue} ms","be.fedict.eid.${host}.tslprobe.responsetime.span");
-        action.setFormat("%.0f");
-        action.setPanel(panel);
-        measure.addAction(action);
-        measures.add(measure); 
+      
         
         //be.fedict.eid.pki-ra-devws.responsetime.bar
         
@@ -172,7 +164,7 @@ public class SarongTest implements SarongPanelListener, CommonRailClientListener
         action.setFormat("%.0f");
         action.setPanel(panel);
         measure.addAction(action);
-        measures.add(measure); 
+        measures.add(measure); */
         
         String[] stateColors=new String[]{"fill:#79ffb3;fill-opacity:1",         // OK, green
                                           "fill:#ffffab;fill-opacity:1",         // WARNING, yellow
@@ -180,6 +172,7 @@ public class SarongTest implements SarongPanelListener, CommonRailClientListener
                                           "fill:#7a70ff;fill-opacity:1",         // MISSING, blue
                                           "fill:#e154f4;fill-opacity:1"};       // TACKLED, magenta
         
+        /*
         //be.fedict.eid.eridu.curl.ocsp.eid.belgium.be.httpprobe.responsetime.state
         measure=new Measure("^be.fedict.eid.([a-z]+).curl.([a-z0-9._]+).httpprobe.responsetime.state$");
         measure.setCaptures("host,env");
@@ -194,7 +187,7 @@ public class SarongTest implements SarongPanelListener, CommonRailClientListener
         action=new StateAction("style","be.fedict.eid.${env}.trust.${test}.xkms2probe.response_time.bar", stateColors);
         action.setPanel(panel);
         measure.addAction(action);
-        measures.add(measure); 
+        measures.add(measure);  */
         
         //be.fedict.eid.tsl.belgium.be.tslprobe.responsetime
         measure=new Measure("^be.fedict.eid.tsl.belgium.be.tslprobe.responsetime.state$");
@@ -203,16 +196,36 @@ public class SarongTest implements SarongPanelListener, CommonRailClientListener
         measure.addAction(action);
         measures.add(measure); 
         
+        // be.fedict.eid.tsl.belgium.be.tslprobe.responsetime
+        measure=new Measure("^be.fedict.eid.tsl.belgium.be.tslprobe.responsetime$");
+        action=new SetAction("width","${formattedValue}","be.fedict.eid.tsl.belgium.be.tslprobe.responsetime.bar");
+        action.setMultiplier(.3);
+        action.setPanel(panel);
+        measure.addAction(action);
+        action=new SetAction("cdata","${formattedValue} ms","be.fedict.eid.tsl.belgium.be.tslprobe.responsetime.text");
+        action.setFormat("%.0f");
+        action.setPanel(panel);
+        measure.addAction(action);
+        measures.add(measure); 
+       
         
         //be.fedict.eid.tsl.belgium.be.tslprobe.validityleft.blob
         measure=new Measure("^be.fedict.eid.tsl.belgium.be.tslprobe.validityleft.state$");
         action=new StateAction("style","be.fedict.eid.tsl.belgium.be.tslprobe.validityleft.blob", stateColors);
         action.setPanel(panel);
         measure.addAction(action);
-        measures.add(measure); */
+        measures.add(measure); 
+        
+        measure=new Measure("^be.fedict.eid.tsl.belgium.be.tslprobe.validityleft$");
+        measure.setCaptures("host");
+        action=new DurationAction("cdata","${formattedValue}","be.fedict.eid.tsl.belgium.be.tslprobe.validityleft.span");
+        measure.addAction(action);
+        action.setPanel(panel);
+        measures.add(measure);
+        
         
 //                          //be.fedict.eid.prod     .pkiramod.app1       .df.boot    .df_complex.reserved.percentage
-        measure=new Measure("^be.fedict.eid.(prod|ta|int).(dss|pkiramod|idp|pkirapor|trust).(app[0-9]).df.([a-z]+).df_complex.(free|used|reserved).percentage$");
+        measure=new Measure("^be.fedict.eid.(prod|ta|int|mon).(dss|pkiramod|idp|pkirapor|trust|tristan|isolde).(app[0-9]).df.([a-z]+).df_complex.(free|used|reserved).percentage$");
 //        measure=new Measure("^be.fedict.eid.(prod|ta).(pkiramod).(app1).df.([a-z]+).df_complex.(free|used|reserved).percentage$");
         measure.setCaptures("env,app,host,mountpoint,metric");
         action=new SetAction("cdata","${formattedValue} %","be.fedict.eid.${env}.${app}.${host}.df.${mountpoint}.${metric}.percentage.span");
@@ -224,27 +237,29 @@ public class SarongTest implements SarongPanelListener, CommonRailClientListener
         measure.addAction(action);  
         measures.add(measure);
         
-        measure=new Measure("^be.fedict.eid.(prod|ta|int).(dss|pkiramod|idp|pkirapor|trust).(app[0-9]).cpu.([0-9]+).cpu.(idle|interrupt|nice|softirq|steal|system|user|wait).value$");
-        measure.setCaptures("env,app,host,core,metric");
-        action=new SetAction("cdata","${formattedValue} % ${metric}","be.fedict.eid.${env}.${app}.${host}.cpu.${core}.cpu.${metric}.value.text");
+        //                     be.fedict.eid.             mon.                                          isolde.cpu.2.cpu.user.value
+        measure=new Measure("^(be.fedict.eid.(prod|ta|int|mon)\\.(dss|pkiramod|idp|pkirapor|trust|tristan|isolde)\\.?(app[0-9]))?\\.cpu.([0-9]+)\\.cpu\\.(idle|interrupt|nice|softirq|steal|system|user|wait)\\.value$");
+        measure.setCaptures("prefix,env,app,host,core,metric");
+        action=new SetAction("cdata","${formattedValue} % ${metric}","${prefix}.cpu.${core}.cpu.${metric}.value.text");
         action.setFormat("%.0f");
         action.setPanel(panel);
         measure.addAction(action);
-        action=new SetAction("width","${formattedValue}","be.fedict.eid.${env}.${app}.${host}.cpu.${core}.cpu.${metric}.value.bar");
+        action=new SetAction("width","${formattedValue}","${prefix}.cpu.${core}.cpu.${metric}.value.bar");
         action.setPanel(panel);
         measure.addAction(action);  
         measures.add(measure);
         
-        measure=new Measure("^be.fedict.eid.(eridu|badtibira|tristan|isolde).cpu.([0-9]+).cpu.(idle|interrupt|nice|softirq|steal|system|user|wait).value$");
+        //                    be.fedict.eid.mon.                          isolde.cpu.2       .cpu.user.value
+       /* measure=new Measure("^be.fedict.eid.mon.(eridu|badtibira|tristan|isolde).cpu.([0-9]+).cpu.(idle|interrupt|nice|softirq|steal|system|user|wait).value$");
         measure.setCaptures("host,core,metric");
         action=new SetAction("cdata","${formattedValue} % ${metric}","be.fedict.eid.${host}.cpu.${core}.cpu.${metric}.value.text");
         action.setFormat("%.0f");
         action.setPanel(panel);
         measure.addAction(action);
-        action=new SetAction("width","${formattedValue}","be.fedict.eid.${host}.cpu.${core}.cpu.${metric}.value.bar");
+        action=new SetAction("width","${formattedValue}","be.fedict.eid.mon.${host}.cpu.${core}.cpu.${metric}.value.bar");
         action.setPanel(panel);
         measure.addAction(action);  
-        measures.add(measure);
+        measures.add(measure); */
         
         
         panel.setURI("file:///data/eid_prod_2011_11_27_0000.svg");
@@ -262,7 +277,7 @@ public class SarongTest implements SarongPanelListener, CommonRailClientListener
     	
 		try
 		{
-			client.addServer(new URL("https://fed1.extremon.net/eid"));
+			client.addServer(new URL("https://tristan.eid.belgium.be/x3mon/"));
 			client.setListener(this);
             //client.setProxy("proxy.yourict.net", 8080);
 			client.start();
@@ -294,18 +309,41 @@ public class SarongTest implements SarongPanelListener, CommonRailClientListener
             String[] labelValue=line.split("=");
             if(labelValue.length==2)
             {
-                for(Measure measure: measures)
-                {
-                    try
-                    {
-                        if(measure.evaluate(labelValue[0], labelValue[1]))
-                            break;
-                    }
-                    catch(Exception ex)
-                    {
-                        System.err.println(ex.toString());
-                    }
-                }
+            	MeasureCacheElement mceFound=labelMeasureAssignments.get(labelValue[0]);
+            	if(mceFound!=null)
+            	{
+            		System.err.println("Cache Hit " + labelValue[0]);
+            		
+            		try
+	                {
+            			mceFound.getMeasure().act(mceFound.getVariables(),labelValue[1]);
+	                }
+	                catch(Exception ex)
+	                {
+	                    System.err.println(ex.toString());
+	                }
+            	}
+            	else
+            	{
+		            for(Measure measure: measures)
+		            {
+		                try
+		                {
+		                	Map<String,String> variables=measure.evaluate(labelValue[0], labelValue[1]);
+		                    if(variables!=null)
+		                    {
+		                    	System.err.println("Cache Miss " + labelValue[0]);
+		                    	labelMeasureAssignments.put(labelValue[0], new MeasureCacheElement(measure, variables));
+		                    	measure.act(variables, labelValue[1]);
+		                        break;
+		                    }
+		                }
+		                catch(Exception ex)
+		                {
+		                    System.err.println(ex.toString());
+		                }
+		            }
+            	}
             }
         }
 	}
