@@ -4,10 +4,10 @@ import org.w3c.dom.Element;
 
 public class Alteration
 {
-	private Element on;
-	private String  attribute;
-	private String 	value;
-	
+	private Element	on;
+	private String	attribute;
+	private String	value;
+
 	public Alteration(Element on, String attribute, String value)
 	{
 		super();
@@ -15,34 +15,41 @@ public class Alteration
 		this.attribute = attribute;
 		this.value = value;
 	}
-	
+
 	public void alter()
 	{
-		if(attribute!=null)
-			on.setAttribute(attribute,value);
+		if (attribute != null)
+			on.setAttribute(attribute, value);
 		else
-            on.setTextContent(value);
+			on.setTextContent(value);
 	}
 
-	// our identity in collections depends on the element we act upon
+	// our identity in collections depends on the element:attribute tuple we act upon
 	// so we get replaced by the last instance acting on the same element
-	
+
 	@Override
 	public boolean equals(Object _that)
 	{
-		Alteration that=(Alteration)_that;
-		return this.on.equals(that.on);
+		if (this == _that)
+			return true;
+		if(!(_that instanceof Alteration))
+			return false;
+		Alteration that = (Alteration)_that;
+		return (this.on.equals(that.on)) && ((this.attribute == null) ? that.attribute == null : this.attribute.equals(that.attribute));
 	}
 
 	@Override
 	public int hashCode()
 	{
-		return on.hashCode();
+		int hash = 1;
+		hash = hash * 31 + on.hashCode();
+		hash = hash * 31 + (attribute == null ? 0 : attribute.hashCode());
+		return hash;
 	}
 
 	@Override
 	public String toString()
 	{
-		return on.getAttribute("id");
+		return on.getAttribute("id") + ":" + (attribute!=null?attribute:"cdata");
 	}
 }

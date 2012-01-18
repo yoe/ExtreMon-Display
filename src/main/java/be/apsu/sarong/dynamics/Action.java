@@ -133,16 +133,10 @@ public abstract class Action
 
     protected void queueSet(final String on, final String value)
     {
-        queueUpdate(new Runnable()
-        {
-            @Override
-            public void run()
-            {
-                if(getAttribute().equals("cdata"))
-                    getElement(on).setTextContent(value);
-                else
-                    getElement(on).setAttribute(getAttribute(),value);
-            }
-        });
+    	System.out.println("queueSet(" + on + "." + getAttribute() + "=" + value + ")");
+    	if(getAttribute().equals("cdata"))
+    		panel.queueAlteration(getElement(on),null,value);
+    	else
+    		panel.queueAlteration(getElement(on),getAttribute(),value);
     }
 }

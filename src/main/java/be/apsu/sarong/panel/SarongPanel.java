@@ -26,16 +26,22 @@ import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.text.DecimalFormat;
+import java.text.Format;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
-
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import org.apache.batik.dom.util.DOMUtilities;
 import org.apache.batik.swing.JSVGCanvas;
 import org.apache.batik.swing.gvt.AbstractImageZoomInteractor;
@@ -44,33 +50,45 @@ import org.apache.batik.swing.gvt.AbstractResetTransformInteractor;
 import org.apache.batik.swing.gvt.Interactor;
 import org.apache.batik.swing.svg.SVGLoadEventDispatcherAdapter;
 import org.apache.batik.swing.svg.SVGLoadEventDispatcherEvent;
-
 import org.w3c.dom.Element;
-import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.w3c.dom.Text;
 import org.w3c.dom.svg.SVGDocument;
 
-public class SarongPanel
+import be.apsu.sarong.dynamics.Alteration;
+import be.apsu.sarong.elements.TimeSpinnerLine;
+import be.apsu.sarong.svgutils.SVGUtils;
+
+public class SarongPanel implements Runnable
 {
 
     private static final String SVG_ID = "id";
-    private static final String SVG_NS = "http://www.w3.org/2000/svg";
     private static final String SVG_TRANSFORM = "transform";
     private static final String SVG_USE = "use";
     private static final String X3MON_ID = "id";
     private static final String XLINK_HREF = "href";
-    private static final String X3MON_TEMPLATE = "template";
     private static final String X3MON_NS = "http://extremon.org/ns/extremon";
     private static final String X3MON_USAGE = "usage";
     private static final String XLINK_NS_URL = "http://www.w3.org/1999/xlink";
-    private String name;
-    private SarongCanvas canvas;
-    private SVGDocument document;
-    private Set<SarongPanelListener> listeners;
-    private HashMap<String, Element> liveElements;
-
+    
+    private String 								name;
+    private SarongCanvas 						canvas;
+    private SVGDocument 						document;
+    private Set<SarongPanelListener> 			listeners;
+    private HashMap<String, Element> 			liveElements;
+    private HashMap<String, TimeSpinnerLine>	liveSpinnerElements;
+    private BlockingQueue<Set<Alteration>>  	alterations;
+    private Set<Alteration>						alterationsInShuttle;
+	private boolean								running;
+	private long								lastRemoteTimestamp;
+    private Calendar    						timestampCalendar;
+    private Format      						timestampFormat,lagFormat;
+    private Element								tsRemoteElem,tsLocalElem;
+    private Element								tsDifferenceElem;
+    private TimeSpinnerLine						tsRemoteProgressElem,tsLocalProgressElem;
+ 
+    
     public SarongPanel addKeyListener(KeyListener keyListener)
     {
         canvas.addKeyListener(keyListener);
@@ -83,129 +101,6 @@ public class SarongPanel
         return this;
     }
 
-//    private void generateIDs(Element element, String prefix)
-//    {
-//        NodeList descendants = element.getElementsByTagName("*");
-//        for (int i = 0; i < descendants.getLength(); i++)
-//        {
-//            if (descendants.item(i).getNodeType() == Node.ELEMENT_NODE) {
-//                // should be true for all descendants
-//                Element descendant = (Element)descendants.item(i);
-//                descendant.setAttribute("id", prefix + "." + descendant.getAttribute("id"));
-//            }
-//        }
-//        element.setAttribute("id", prefix);
-//    }
-//    void replaceTemplate(Element clone, Element original)
-//    {
-//        Element duplicate = (Element) original.cloneNode(true);
-//        NamedNodeMap cloneAttr = clone.getAttributes();
-//        if (cloneAttr.getNamedItem("transform") != null) {
-//            Node duplicateTransformAttr = cloneAttr.getNamedItem("transform").cloneNode(true);
-//            NamedNodeMap duplicateAttr = duplicate.getAttributes();
-//            duplicateAttr.setNamedItem(duplicateTransformAttr);
-//        }
-//        generateIDs(duplicate, cloneAttr.getNamedItem("id").getNodeValue().toLowerCase());
-//        Node parent = clone.getParentNode();
-//        parent.replaceChild(duplicate, clone);
-//    }
-//    
-//    boolean replaceTemplates(Element element)
-//    {
-//        return replaceTemplates(element.getElementsByTagNameNS("http://www.w3.org/2000/svg", "use"));
-//    }
-//    
-//    boolean replaceTemplates(org.w3c.dom.Document document)
-//    {
-//        return replaceTemplates(document.getElementsByTagNameNS("http://www.w3.org/2000/svg", "use"));
-//    }
-//    
-//    boolean replaceTemplates(NodeList clones)
-//    {
-//        boolean templateReplaced = false;
-//        for (int i = clones.getLength() - 1; i >= 0; i--) {
-//            Element clone = (Element)clones.item(i);
-//            if (clone != null) {
-//                NamedNodeMap cloneAttr = clone.getAttributes();
-//                Node cloneRefNode = cloneAttr.getNamedItemNS("http://www.w3.org/1999/xlink", "href");
-//                if (cloneRefNode != null) {
-//                    String cloneRef = cloneRefNode.getNodeValue().toLowerCase();
-//                    if (cloneRef.startsWith("#")) {
-//                        Element templateElement = document.getElementById(cloneRef.substring(1));
-//                        if (templateElement != null && hasClass(templateElement, "be.apsu.sarong.original")) {
-//                            replaceTemplate(clone,templateElement);
-//                            templateReplaced = true;
-//                        }
-//                    }
-//                }
-//            }
-//        }
-//        return templateReplaced;
-//    }
-//    
-//    void replaceTemplates()
-//    {
-//        queueUpdate(new Runnable()
-//        {
-//            @Override
-//            public void run()
-//            {
-//                // replace nested templates
-//                boolean templateReplaced = true;
-//                while(templateReplaced)
-//                {
-//                    templateReplaced = false;
-//                    NodeList templateNodes = document.getElementsByTagName("*");
-//                    for (int i = 0; i < templateNodes.getLength(); i++)
-//                    {
-//                        Node templateNode = templateNodes.item(i);
-//                        if (hasClass(templateNode,"be.apsu.sarong.original"))
-//                        {
-//                            templateReplaced = templateReplaced || replaceTemplates((Element)templateNode);
-//                        }
-//                    }
-//                }
-//
-//                // replace clones
-//                replaceTemplates(document);
-//                
-//                FileWriter writer=null;
-//                
-//                try
-//                {
-//                    writer=new FileWriter(new File("/tmp/new.svg"));
-//                    DOMUtilities.writeDocument(document, writer);
-//                }
-//                catch (IOException ex)
-//                {
-//                    Logger.getLogger(SarongPanel.class.getName()).log(Level.SEVERE, null, ex);
-//                }
-//                finally
-//                {
-//                    try
-//                    {
-//                        writer.close();
-//                    }
-//                    catch (IOException ex)
-//                    {
-//                        Logger.getLogger(SarongPanel.class.getName()).log(Level.SEVERE, null, ex);
-//                    }
-//                }  
-//            }
-//        });
-//    }
-//    
-//    private boolean hasClass(Node templateNode, String className)
-//    {
-//        try
-//        {
-//            return templateNode.getAttributes().getNamedItem("class").getNodeValue().equalsIgnoreCase(className);
-//        }
-//        catch (NullPointerException ex)
-//        {
-//            return false;
-//        }
-//    }
     Element createDescription(String text)
     {
         Element description = document.createElementNS("http://www.w3.org/2000/svg", "desc");
@@ -214,48 +109,12 @@ public class SarongPanel
         return description;
     }
 
-    public static String join(Iterable< ? extends Object> pColl, String separator)
-    {
-        Iterator< ? extends Object> oIter;
-        if (pColl == null || (!(oIter = pColl.iterator()).hasNext()))
-        {
-            return "";
-        }
-        StringBuilder oBuilder = new StringBuilder(String.valueOf(oIter.next()));
-        while (oIter.hasNext())
-        {
-            oBuilder.append(separator).append(oIter.next());
-        }
-        return oBuilder.toString();
-    }
-
-    public static String njoin(List<String> list, int count, String separator)
-    {
-        StringBuilder builder = new StringBuilder();
-
-        if (count > list.size())
-        {
-            count = list.size();
-        }
-
-        for (int i = 0; i < count; i++)
-        {
-            String slice = list.get(i);
-            if (slice != null)
-            {
-                builder.append('.');
-                builder.append(slice);
-            }
-        }
-
-        return builder.toString().substring(1);
-    }
+   
 
     void generateTooltips()
     {
         queueUpdate(new Runnable()
         {
-
             @Override
             public void run()
             {
@@ -297,6 +156,12 @@ public class SarongPanel
         this.canvas.setBackground(Color.black);
         this.listeners = new HashSet<SarongPanelListener>();
         this.liveElements = new HashMap<String, Element>();
+        this.liveSpinnerElements = new HashMap<String, TimeSpinnerLine>();
+        this.alterations = new ArrayBlockingQueue<Set<Alteration>>(10);
+        this.alterationsInShuttle=new HashSet<Alteration>(32);
+        this.timestampCalendar=Calendar.getInstance();
+        this.timestampFormat=new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss.");
+        this.lagFormat = new DecimalFormat("+0000 ms;-0000 ms");
 
         this.canvas.addSVGLoadEventDispatcherListener(new SVGLoadEventDispatcherAdapter()
         {
@@ -317,7 +182,16 @@ public class SarongPanel
                 materializeTemplateUsages(document);
                 removeTemplates(document);
                 registerLiveElements(document);
-
+                
+                tsRemoteElem 			= getElementById("timestamp-remote");
+                tsLocalElem 			= getElementById("timestamp-local");
+                tsDifferenceElem 		= getElementById("timestamp-difference");
+                
+                tsRemoteProgressElem 	= getSpinnerById("timestamp-remote-progress");
+                tsLocalProgressElem 	= getSpinnerById("timestamp-local-progress");
+                
+                start();
+                
                 FileWriter writer = null;
 
                 try
@@ -392,7 +266,39 @@ public class SarongPanel
             }
         });
     }
-
+    
+    public void start()
+    {
+    	new Thread(this,"SarongPanelUpdater").start();
+    }
+    
+    public void stop()
+    {
+    	this.running=false;
+    }
+    
+    public void startUpdate()
+    {
+    	alterationsInShuttle.clear();
+    }
+    
+    public void endUpdate()
+    {
+    	try
+		{
+			alterations.put(new HashSet<Alteration>(alterationsInShuttle));
+		} 
+    	catch (InterruptedException e)
+		{
+			e.printStackTrace();
+		}	
+    }
+    
+    public void queueAlteration(Element on,String attribute, String value)
+    {
+    	alterationsInShuttle.add(new Alteration(on, attribute, value));
+    }
+    
     public String getName()
     {
         return name;
@@ -421,6 +327,13 @@ public class SarongPanel
             return null;
         return liveElements.get(id);
     }
+    
+    public TimeSpinnerLine getSpinnerById(String id)
+    {
+        if (document == null || liveSpinnerElements == null)
+            return null;
+        return liveSpinnerElements.get(id);
+    }
 
     public void queueUpdate(Runnable updater)
     {
@@ -434,9 +347,19 @@ public class SarongPanel
                 invokeLater(updater);
     }
 
+    public int suspendRedraw()
+    {
+    	return document.getRootElement().suspendRedraw(2000);
+    }
+    
+    public void unsuspendRedraw()
+    {
+    	document.getRootElement().unsuspendRedrawAll();
+    }
+
     private void _registerLiveElements(Node node, int xmlLevel, List<String> path)
     {
-        String idSlice = getX3MonId(node);
+        String idSlice = SVGUtils.getX3MonId(node);
         if (idSlice != null)
         {
             while(path.size()<(xmlLevel + 1))
@@ -446,8 +369,16 @@ public class SarongPanel
 
             if(!node.getNodeName().equalsIgnoreCase("g"))
             {
-                liveElements.put(njoin(path, xmlLevel + 1, "."), (Element) node);
-                System.out.println("[" + node.getNodeName() + "] " + njoin(path, xmlLevel + 1, ".") + " (" + getAttr(node, SVG_ID) + ")");
+            	if(SVGUtils.isX3MonTimeSpinner(node))
+            	{
+            		liveSpinnerElements.put(SVGUtils.njoin(path, xmlLevel + 1, "."),new TimeSpinnerLine((Element)node));
+            		System.out.println("liveSpinner [" + node.getNodeName() + "] " + SVGUtils.njoin(path, xmlLevel + 1, ".") + " (" + SVGUtils.getAttr(node, SVG_ID) + ")");
+            	}
+            	else
+            	{
+            		liveElements.put(SVGUtils.njoin(path, xmlLevel + 1, "."), (Element) node);
+            		System.out.println("liveElement [" + node.getNodeName() + "] " + SVGUtils.njoin(path, xmlLevel + 1, ".") + " (" + SVGUtils.getAttr(node, SVG_ID) + ")");
+            	}
             }
         }
 
@@ -468,7 +399,7 @@ public class SarongPanel
 
     private void removeTemplates(Node node)
     {
-        if (isX3MonTemplate(node))
+        if (SVGUtils.isX3MonTemplate(node))
             node.getParentNode().removeChild(node);
         NodeList kids = node.getChildNodes();
         for (int i = 0; i < kids.getLength(); i++)
@@ -479,17 +410,17 @@ public class SarongPanel
     {
         if(node.getNodeName().equals(SVG_USE))
         {
-            String originalId = getAttrNS(node, XLINK_NS_URL, XLINK_HREF);
+            String originalId = SVGUtils.getAttrNS(node, XLINK_NS_URL, XLINK_HREF);
             if (originalId != null)
             {
                 Node original = document.getElementById(originalId.substring(1));
-                if (original != null && isX3MonTemplate(original))
+                if (original != null && SVGUtils.isX3MonTemplate(original))
                 {
                     Node materialNode = original.cloneNode(true);
-                    removeAttribute(materialNode, SVG_ID);
-                    removeAttributeNS(materialNode, X3MON_NS, X3MON_USAGE);
-                    cloneAttribute(node, materialNode, SVG_TRANSFORM);
-                    cloneAttributeNS(node, materialNode, X3MON_NS, X3MON_ID);
+                    SVGUtils.removeAttribute(materialNode, SVG_ID);
+                    SVGUtils.removeAttributeNS(materialNode, X3MON_NS, X3MON_USAGE);
+                    SVGUtils.cloneAttribute(node, materialNode, SVG_TRANSFORM);
+                    SVGUtils.cloneAttributeNS(node, materialNode, X3MON_NS, X3MON_ID);
                     node.getParentNode().replaceChild(materialNode, node);
                 }
             }
@@ -500,97 +431,77 @@ public class SarongPanel
             materializeTemplateUsages(kids.item(i));
     }
 
-    private String getAttr(Node node, String attrName)
-    {
-        NamedNodeMap attrNodeMap = node.getAttributes();
-        if (attrNodeMap == null)
-        {
-            return null;
-        }
-        Node valueNode = attrNodeMap.getNamedItem(attrName);
-        if (valueNode == null)
-        {
-            return null;
-        }
-        return valueNode.getNodeValue();
-    }
+	@Override
+	public void run()
+	{
+		
+		
+		this.running=true;
+		while(running)
+		{
+			long lastLocalTimestamp=System.currentTimeMillis();
+			
+			List<Set<Alteration>> popped=new ArrayList<Set<Alteration>>();
+			final Set<Alteration> consolidated=new HashSet<Alteration>();
+			
+			if(!alterations.isEmpty())
+			{
+				//System.out.println("draining " + alterations.size() + " shuttle" + (alterations.size()!=1?"s":""));
+				alterations.drainTo(popped);
+				for(Set<Alteration> shuttle : popped)
+					consolidated.addAll(shuttle);
+				popped.clear();
+			}
+			
+			timestampCalendar.setTimeInMillis(lastRemoteTimestamp);
+	        consolidated.add(new Alteration(tsRemoteElem,null,timestampFormat.format(timestampCalendar.getTime()) + (timestampCalendar.get(Calendar.MILLISECOND)/100)));
+	        consolidated.add(tsRemoteProgressElem.setSpinPosition(timestampCalendar.get(Calendar.MILLISECOND)/10));
+	        
+	        timestampCalendar.setTimeInMillis(lastLocalTimestamp);
+	        consolidated.add(new Alteration(tsLocalElem,null,timestampFormat.format(timestampCalendar.getTime()) + (timestampCalendar.get(Calendar.MILLISECOND)/100)));
+	        consolidated.add(tsLocalProgressElem.setSpinPosition(timestampCalendar.get(Calendar.MILLISECOND)/10));
+	        
+	        long lag=lastRemoteTimestamp-lastLocalTimestamp;
+	        consolidated.add(new Alteration(tsDifferenceElem,null,lagFormat.format(lag)));
+	        
+	        lag=(Math.abs(lag)/50);
+	        if(lag>20) lag=20;		// limit lag for graphical representation
+	        consolidated.add(new Alteration(tsRemoteElem,"transform","translate(0 " + (-lag) + ")"));
+	        consolidated.add(new Alteration(tsLocalElem,"transform","translate(0 " + (lag) + ")"));
+				
+			/*System.out.println("\n\nSHUTTLE");
+			for(Alteration alteration : consolidated)
+				System.out.println("Alteration On [" + alteration + "]");
+			System.out.println("/SHUTTLE\n\n"); */
 
-    private String getAttrNS(Node node, String nameSpace, String attrName)
-    {
-        NamedNodeMap attrNode = node.getAttributes();
-        if (attrNode == null)
-        {
-            return null;
-        }
-        Node valueNode = attrNode.getNamedItemNS(nameSpace, attrName);
-        if (valueNode == null)
-        {
-            return null;
-        }
-        return valueNode.getNodeValue();
-    }
+			queueUpdate(new Runnable()
+			{
+				@Override
+				public void run()
+				{
+					for(Alteration alteration : consolidated)
+						alteration.alter();
+				}
+			});
+			
+			try
+			{
+				Thread.sleep(50);
+			} 
+			catch (InterruptedException e)
+			{
+				e.printStackTrace();
+			}
+		}
+	}
 
-    private String getX3MonAttr(Node node, String attrName)
-    {
-        return getAttrNS(node, X3MON_NS, attrName);
-    }
+	public long getLastRemoteTimestamp()
+	{
+		return lastRemoteTimestamp;
+	}
 
-    private String getX3MonId(Node node)
-    {
-        return getX3MonAttr(node, X3MON_ID);
-    }
-
-    private boolean isX3MonUsage(Node node, String usage)
-    {
-        String x3MonUsage = getX3MonAttr(node, X3MON_USAGE);
-        if (x3MonUsage == null)
-        {
-            return false;
-        }
-        return x3MonUsage.contains(usage);
-    }
-
-    private boolean isX3MonTemplate(Node node)
-    {
-        boolean is = isX3MonUsage(node, X3MON_TEMPLATE);
-        return is;
-    }
-
-    private void cloneAttribute(Node source, Node destination, String attrName)
-    {
-        Node attrNode = source.getAttributes().getNamedItem(attrName);
-        if (attrNode != null)
-        {
-            destination.getAttributes().setNamedItem(attrNode.cloneNode(true));
-        }
-    }
-
-    private void cloneAttributeNS(Node source, Node destination, String nameSpace, String attrName)
-    {
-        Node attrNode = source.getAttributes().getNamedItemNS(nameSpace, attrName);
-        if (attrNode != null)
-        {
-            destination.getAttributes().setNamedItemNS(attrNode.cloneNode(true));
-        }
-    }
-
-    private void removeAttribute(Node node, String attrName)
-    {
-        NamedNodeMap attrNode = node.getAttributes();
-        if (attrNode == null)
-        {
-            return;
-        }
-        attrNode.removeNamedItem(attrName);
-    }
-
-    private void removeAttributeNS(Node node, String nameSpace, String attrName)
-    {
-        NamedNodeMap attrNode = node.getAttributes();
-        if (attrNode == null)
-        {
-            return;
-        }
-        attrNode.removeNamedItemNS(nameSpace, attrName);
-    }
+	public void setLastRemoteTimestamp(long lastRemoteTimestamp)
+	{
+		this.lastRemoteTimestamp = lastRemoteTimestamp;
+	}
 }

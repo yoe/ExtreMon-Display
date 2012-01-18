@@ -33,11 +33,11 @@ public class SarongTest implements SarongPanelListener, CommonRailClientListener
         panel=new SarongPanel("test");
         panel.addListener(this);
         frame=new JFrame("SarongTest");
-        frame.setSize(1920,1100);
+        frame.setSize(1920,1200);
         //frame.setSize(256,256);
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         frame.add(panel.getCanvas());
-        //frame.setUndecorated(true);
+        frame.setUndecorated(true);
         frame.setVisible(true);
         
 
@@ -55,54 +55,64 @@ public class SarongTest implements SarongPanelListener, CommonRailClientListener
 //        measure.addAction(action);
 //        measures.add(measure);
         
-        
+        String[] stateColors=new String[]{"fill:#79ffb3;fill-opacity:1",         // OK, green
+                "fill:#ffffab;fill-opacity:1",         // WARNING, yellow
+                "fill:#ec7c87;fill-opacity:1",         // ALERT,  red
+                "fill:#7a70ff;fill-opacity:1",         // MISSING, blue
+                "fill:#e154f4;fill-opacity:1"};       // TACKLED, magenta
         
         measure=new Measure("^(be.fedict.eid.mon.(eridu|badtibira|tristan|isolde)).dispatcher.timestamp$");
-        measure.setCaptures("fqhn,hostname");
-        action=new TimestampAction("cdata","${formattedValue}","timestamp");
+        measure.setCaptures(",fqhn,hostname");
+        action=new TimestampAction();
         measure.addAction(action);
         action.setPanel(panel);
-        action=new SetAction("cdata","${hostname}","host");
-        action.setPanel(panel);
-        measure.addAction(action);
+
         measures.add(measure);
-        
-  
-        
- /*
         
         measure=new Measure("^be.fedict.eid.([a-z]+).trust.(validauthcertchain|revokedauthcertchain).xkms2probe.responsetime$");
         measure.setCaptures("environment,test");
-        action=new SetAction("width","${formattedValue}","be.fedict.eid.${environment}.trust.${test}.xkms2probe.response_time.bar");
+        action=new SetAction("width","${formattedValue}","be.fedict.eid.${environment}.trust.${test}.xkms2probe.responsetime.bar");
         action.setMultiplier(.2);
         action.setPanel(panel);
         measure.addAction(action);
-        action=new SetAction("cdata","${formattedValue} ms","be.fedict.eid.${environment}.trust.${test}.xkms2probe.response_time.span");
+        action=new SetAction("cdata","${formattedValue}","be.fedict.eid.${environment}.trust.${test}.xkms2probe.responsetime.text");
         action.setFormat("%.0f");
         action.setPanel(panel);
         measure.addAction(action);
         measures.add(measure); 
         
-        //be.fedict.eid.monitron.curl.dss-devportal.responsetime
-        //be.fedict.eid.pki-ra-devws.responsetime.bar
-        //be.fedict.eid.eridu.curl.dssws.ta.belgium.be_ws.response_time.value
-        //be.fedict.eid.badtibira.curl.crl.eid.belgium.be_belgium2.crl.response_time.value=0.023692
-        // be.fedict.eid.eridu.curl.idp.ta.belgium.be_home.httpprobe.responsetime
-        // be.fedict.eid.eridu.curl.trust.ta.belgium.be_portal_http.httpprobe.responsetime
-
-        measure=new Measure("^be.fedict.eid.([a-z]+).curl.([a-z0-9._-]+).httpprobe.responsetime$");
-        measure.setCaptures("host,env");
-        action=new SetAction("width","${formattedValue}","be.fedict.eid.${env}.response_time.bar");
-        action.setMultiplier(.2);
-        action.setPanel(panel);
-        measure.addAction(action);
-        action=new SetAction("cdata","${formattedValue} ms","be.fedict.eid.${env}.response_time.span");
-        action.setFormat("%.0f");
+        //be.fedict.eid.ta.trust.validrrncertchain.xkms2probe.responsetime.state
+        measure=new Measure("^be.fedict.eid.([a-z]+).trust.(validauthcertchain|revokedauthcertchain).state$");
+        measure.setCaptures("environment,test");
+        action=new StateAction("style","be.fedict.eid.${environment}.trust.${test}.xkms2probe.responsetime.bar", stateColors);
         action.setPanel(panel);
         measure.addAction(action);
         measures.add(measure); 
         
-      
+        measure=new Measure("^be\\.fedict\\.eid\\.(.+)\\.(http|ocsp|tsl)probe\\.state$");
+        measure.setCaptures("prefix,probe");
+        action=new StateAction("style","be.fedict.eid.${prefix}.${probe}probe.responsetime.bar", stateColors);
+        action.setPanel(panel);
+        measure.addAction(action);
+        action=new StateAction("style","be.fedict.eid.${prefix}.${probe}probe.state.blob", stateColors);
+        action.setPanel(panel);
+        measure.addAction(action);
+        measures.add(measure); 
+ 
+        measure=new Measure("^be\\.fedict\\.eid\\.(.+)\\.(http|ocsp|tsl)probe\\.responsetime$");
+        measure.setCaptures("prefix,probe");
+        action=new SetAction("width","${formattedValue}","be.fedict.eid.${prefix}.${probe}probe.responsetime.bar");
+        action.setMultiplier(.2);
+        action.setPanel(panel);
+        measure.addAction(action);
+        action=new SetAction("cdata","${formattedValue}","be.fedict.eid.${prefix}.${probe}probe.responsetime.text");
+        action.setFormat("%.0f");
+        action.setPanel(panel);
+        measure.addAction(action);
+        measures.add(measure); 
+       
+        
+        /*
         
         //be.fedict.eid.pki-ra-devws.responsetime.bar
         
@@ -166,11 +176,7 @@ public class SarongTest implements SarongPanelListener, CommonRailClientListener
         measure.addAction(action);
         measures.add(measure); */
         
-        String[] stateColors=new String[]{"fill:#79ffb3;fill-opacity:1",         // OK, green
-                                          "fill:#ffffab;fill-opacity:1",         // WARNING, yellow
-                                          "fill:#ec7c87;fill-opacity:1",         // ALERT,  red
-                                          "fill:#7a70ff;fill-opacity:1",         // MISSING, blue
-                                          "fill:#e154f4;fill-opacity:1"};       // TACKLED, magenta
+     
         
         /*
         //be.fedict.eid.eridu.curl.ocsp.eid.belgium.be.httpprobe.responsetime.state
@@ -181,28 +187,22 @@ public class SarongTest implements SarongPanelListener, CommonRailClientListener
         measure.addAction(action);
         measures.add(measure); 
         
-        //be.fedict.eid.ta.trust.validrrncertchain.xkms2probe.responsetime.state
-        measure=new Measure("^be.fedict.eid.(ta|prod).trust.(validauthcertchain|revokedauthcertchain).xkms2probe.responsetime.state$");
-        measure.setCaptures("env,test");
-        action=new StateAction("style","be.fedict.eid.${env}.trust.${test}.xkms2probe.response_time.bar", stateColors);
-        action.setPanel(panel);
-        measure.addAction(action);
-        measures.add(measure);  */
+        // */
         
         //be.fedict.eid.tsl.belgium.be.tslprobe.responsetime
-        measure=new Measure("^be.fedict.eid.tsl.belgium.be.tslprobe.responsetime.state$");
+        measure=new Measure("^be.fedict.eid.ext.tsl.tslprobe.responsetime.state$");
         action=new StateAction("style","be.fedict.eid.tsl.belgium.be.tslprobe.responsetime.bar", stateColors);
         action.setPanel(panel);
         measure.addAction(action);
         measures.add(measure); 
         
         // be.fedict.eid.tsl.belgium.be.tslprobe.responsetime
-        measure=new Measure("^be.fedict.eid.tsl.belgium.be.tslprobe.responsetime$");
+        measure=new Measure("^be.fedict.eid.ext.tsl.tslprobe.responsetime$");
         action=new SetAction("width","${formattedValue}","be.fedict.eid.tsl.belgium.be.tslprobe.responsetime.bar");
         action.setMultiplier(.3);
         action.setPanel(panel);
         measure.addAction(action);
-        action=new SetAction("cdata","${formattedValue} ms","be.fedict.eid.tsl.belgium.be.tslprobe.responsetime.text");
+        action=new SetAction("cdata","${formattedValue}","be.fedict.eid.tsl.belgium.be.tslprobe.responsetime.text");
         action.setFormat("%.0f");
         action.setPanel(panel);
         measure.addAction(action);
@@ -210,15 +210,14 @@ public class SarongTest implements SarongPanelListener, CommonRailClientListener
        
         
         //be.fedict.eid.tsl.belgium.be.tslprobe.validityleft.blob
-        measure=new Measure("^be.fedict.eid.tsl.belgium.be.tslprobe.validityleft.state$");
-        action=new StateAction("style","be.fedict.eid.tsl.belgium.be.tslprobe.validityleft.blob", stateColors);
+        measure=new Measure("^be.fedict.eid.ext.tsl.tslprobe.validityleft.state$");
+        action=new StateAction("style","be.fedict.eid.ext.tsl.tslprobe.validityleft.blob", stateColors);
         action.setPanel(panel);
         measure.addAction(action);
         measures.add(measure); 
         
-        measure=new Measure("^be.fedict.eid.tsl.belgium.be.tslprobe.validityleft$");
-        measure.setCaptures("host");
-        action=new DurationAction("cdata","${formattedValue}","be.fedict.eid.tsl.belgium.be.tslprobe.validityleft.span");
+        measure=new Measure("^be.fedict.eid.ext.tsl.tslprobe.validityleft$");
+        action=new DurationAction("cdata","${formattedValue}","be.fedict.eid.ext.tsl.tslprobe.validityleft.span");
         measure.addAction(action);
         action.setPanel(panel);
         measures.add(measure);
@@ -262,7 +261,8 @@ public class SarongTest implements SarongPanelListener, CommonRailClientListener
         measures.add(measure); */
         
         
-        panel.setURI("file:///data/eid_prod_2011_11_27_0000.svg");
+        panel.setURI("file:///data/eid_prod_2012_01_16_0000.svg");
+        //panel.setURI("file:///data/TIMESTAMP.svg"); 
     }
 
     public static void main(String[] args)
@@ -279,7 +279,7 @@ public class SarongTest implements SarongPanelListener, CommonRailClientListener
 		{
 			client.addServer(new URL("https://tristan.eid.belgium.be/x3mon/"));
 			client.setListener(this);
-            //client.setProxy("proxy.yourict.net", 8080);
+            client.setProxy("proxy.yourict.net", 8080);
 			client.start();
 		}
 		catch (MalformedURLException e)
@@ -303,49 +303,64 @@ public class SarongTest implements SarongPanelListener, CommonRailClientListener
 
 	@Override
 	public void commonRailShuttle(List<String> lines)
-	{
-		for(String line: lines)
-        {
-            String[] labelValue=line.split("=");
-            if(labelValue.length==2)
-            {
-            	MeasureCacheElement mceFound=labelMeasureAssignments.get(labelValue[0]);
-            	if(mceFound!=null)
-            	{
-            		System.err.println("Cache Hit " + labelValue[0]);
-            		
-            		try
-	                {
-            			mceFound.getMeasure().act(mceFound.getVariables(),labelValue[1]);
-	                }
-	                catch(Exception ex)
-	                {
-	                    System.err.println(ex.toString());
-	                }
-            	}
-            	else
-            	{
-		            for(Measure measure: measures)
-		            {
-		                try
-		                {
-		                	Map<String,String> variables=measure.evaluate(labelValue[0], labelValue[1]);
-		                    if(variables!=null)
-		                    {
-		                    	System.err.println("Cache Miss " + labelValue[0]);
-		                    	labelMeasureAssignments.put(labelValue[0], new MeasureCacheElement(measure, variables));
-		                    	measure.act(variables, labelValue[1]);
-		                        break;
-		                    }
-		                }
-		                catch(Exception ex)
-		                {
-		                    System.err.println(ex.toString());
-		                }
-		            }
-            	}
-            }
-        }
+	{	
+		panel.startUpdate();
+		
+		try
+		{
+			for(String line: lines)
+	        {
+	            String[] labelValue=line.split("=");
+	            if(labelValue.length==2)
+	            {
+	            	if(labelMeasureAssignments.containsKey(labelValue[0]))
+	            	{
+	            		MeasureCacheElement mceFound=labelMeasureAssignments.get(labelValue[0]);
+		            	if(mceFound!=null)
+		            	{
+		            		try
+			                {
+		            			mceFound.getMeasure().act(mceFound.getVariables(),labelValue[1]);
+			                }
+			                catch(Exception ex)
+			                {
+			                    System.err.println(ex.toString());
+			                }
+		            	}
+	            	}
+	            	else
+	            	{
+	            		boolean found=false;
+			            for(Measure measure: measures)
+			            {
+			                try
+			                {
+			                	Map<String,String> variables=measure.evaluate(labelValue[0], labelValue[1]);
+			                    if(variables!=null)
+			                    {
+			                    	System.err.println("Caching " + labelValue[0]);
+			                    	labelMeasureAssignments.put(labelValue[0], new MeasureCacheElement(measure, variables));
+			                    	measure.act(variables, labelValue[1]);
+			                    	found=true;
+			                        break;
+			                    }
+			                }
+			                catch(Exception ex)
+			                {
+			                    System.err.println(ex.toString());
+			                }
+			            }
+			            
+			            if(!found)
+			            	labelMeasureAssignments.put(labelValue[0],null);	// negative cache entry
+	            	}
+	            }
+	        }
+		}
+		finally
+		{
+			panel.endUpdate();
+		}
 	}
 }
 
