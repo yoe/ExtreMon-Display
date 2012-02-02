@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -13,6 +15,8 @@ import java.util.regex.Pattern;
  */
 public class Measure
 {
+	private static final Logger logger=Logger.getLogger(Measure.class.getName());
+	
     private Pattern         pattern;
     private String[]        captureNames;
     private Set<Action>     actions;
@@ -55,7 +59,7 @@ public class Measure
             }
             catch(Exception ex)
             {
-                System.err.println(ex);
+            	logger.log(Level.SEVERE,"c " + label + "=" + value,ex);
                 return null;
             }
         }

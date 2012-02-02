@@ -57,12 +57,15 @@ import org.w3c.dom.Text;
 import org.w3c.dom.svg.SVGDocument;
 
 import be.apsu.sarong.dynamics.Alteration;
+import be.apsu.sarong.dynamics.Alternator;
 import be.apsu.sarong.elements.TimeSpinnerLine;
 import be.apsu.sarong.svgutils.SVGUtils;
 
 public class SarongPanel implements Runnable
 {
-
+	private static final Logger logger=Logger.getLogger(SarongPanel.class.getName());
+				
+	
     private static final String SVG_ID = "id";
     private static final String SVG_TRANSFORM = "transform";
     private static final String SVG_USE = "use";
@@ -109,8 +112,6 @@ public class SarongPanel implements Runnable
         return description;
     }
 
-   
-
     void generateTooltips()
     {
         queueUpdate(new Runnable()
@@ -130,7 +131,7 @@ public class SarongPanel implements Runnable
 
                         if (idParts.length > 4)
                         {
-                            System.err.println("creating description for " + id);
+                            logger.finest("creating description for " + id);
                             Element desc = createDescription(id.substring(0, id.lastIndexOf('.')));
 
                             Element element = (Element) node;
@@ -149,8 +150,10 @@ public class SarongPanel implements Runnable
 
     public SarongPanel(String name)
     {
+    	logger.setLevel(Level.ALL);
         this.name = name;
-        this.canvas = new SarongCanvas();
+        //this.canvas = new SarongCanvas();
+        this.canvas = new SarongCanvas(new X3UserAgent(),true,true);
         this.canvas.setDocumentState(JSVGCanvas.ALWAYS_DYNAMIC);
         this.canvas.setAnimationLimitingNone();
         this.canvas.setBackground(Color.black);
@@ -337,24 +340,9 @@ public class SarongPanel implements Runnable
 
     public void queueUpdate(Runnable updater)
     {
-        if (canvas.getUpdateManager() == null)
-        {
+        if (canvas.getUpdateManager()==null)
             return;
-        }
-
-        canvas.getUpdateManager().
-                getUpdateRunnableQueue().
-                invokeLater(updater);
-    }
-
-    public int suspendRedraw()
-    {
-    	return document.getRootElement().suspendRedraw(2000);
-    }
-    
-    public void unsuspendRedraw()
-    {
-    	document.getRootElement().unsuspendRedrawAll();
+        canvas.getUpdateManager().getUpdateRunnableQueue().invokeLater(updater);
     }
 
     private void _registerLiveElements(Node node, int xmlLevel, List<String> path)
@@ -372,12 +360,12 @@ public class SarongPanel implements Runnable
             	if(SVGUtils.isX3MonTimeSpinner(node))
             	{
             		liveSpinnerElements.put(SVGUtils.njoin(path, xmlLevel + 1, "."),new TimeSpinnerLine((Element)node));
-            		System.out.println("liveSpinner [" + node.getNodeName() + "] " + SVGUtils.njoin(path, xmlLevel + 1, ".") + " (" + SVGUtils.getAttr(node, SVG_ID) + ")");
+            		logger.finest("liveSpinner [" + node.getNodeName() + "] " + SVGUtils.njoin(path, xmlLevel + 1, ".") + " (" + SVGUtils.getAttr(node, SVG_ID) + ")");
             	}
             	else
             	{
             		liveElements.put(SVGUtils.njoin(path, xmlLevel + 1, "."), (Element) node);
-            		System.out.println("liveElement [" + node.getNodeName() + "] " + SVGUtils.njoin(path, xmlLevel + 1, ".") + " (" + SVGUtils.getAttr(node, SVG_ID) + ")");
+            		logger.finest("liveElement [" + node.getNodeName() + "] " + SVGUtils.njoin(path, xmlLevel + 1, ".") + " (" + SVGUtils.getAttr(node, SVG_ID) + ")");
             	}
             }
         }
@@ -434,55 +422,42 @@ public class SarongPanel implements Runnable
 	@Override
 	public void run()
 	{
-		
+		Alternator alternator=null;
+		List<Set<Alteration>> popped=new ArrayList<Set<Alteration>>();
 		
 		this.running=true;
 		while(running)
 		{
-			long lastLocalTimestamp=System.currentTimeMillis();
-			
-			List<Set<Alteration>> popped=new ArrayList<Set<Alteration>>();
-			final Set<Alteration> consolidated=new HashSet<Alteration>();
+			long lastLocalTimestamp	=System.currentTimeMillis();
+				 alternator			=new Alternator();
 			
 			if(!alterations.isEmpty())
 			{
-				//System.out.println("draining " + alterations.size() + " shuttle" + (alterations.size()!=1?"s":""));
+				logger.log(Level.FINEST,"draining " + alterations.size() + " shuttle" + (alterations.size()!=1?"s":""));
 				alterations.drainTo(popped);
 				for(Set<Alteration> shuttle : popped)
-					consolidated.addAll(shuttle);
+					alternator.addAll(shuttle);
 				popped.clear();
 			}
 			
 			timestampCalendar.setTimeInMillis(lastRemoteTimestamp);
-	        consolidated.add(new Alteration(tsRemoteElem,null,timestampFormat.format(timestampCalendar.getTime()) + (timestampCalendar.get(Calendar.MILLISECOND)/100)));
-	        consolidated.add(tsRemoteProgressElem.setSpinPosition(timestampCalendar.get(Calendar.MILLISECOND)/10));
+			alternator.add(new Alteration(tsRemoteElem,null,timestampFormat.format(timestampCalendar.getTime()) + (timestampCalendar.get(Calendar.MILLISECOND)/100)));
+			alternator.add(tsRemoteProgressElem.setSpinPosition(timestampCalendar.get(Calendar.MILLISECOND)/10));
 	        
 	        timestampCalendar.setTimeInMillis(lastLocalTimestamp);
-	        consolidated.add(new Alteration(tsLocalElem,null,timestampFormat.format(timestampCalendar.getTime()) + (timestampCalendar.get(Calendar.MILLISECOND)/100)));
-	        consolidated.add(tsLocalProgressElem.setSpinPosition(timestampCalendar.get(Calendar.MILLISECOND)/10));
+	        alternator.add(new Alteration(tsLocalElem,null,timestampFormat.format(timestampCalendar.getTime()) + (timestampCalendar.get(Calendar.MILLISECOND)/100)));
+	        alternator.add(tsLocalProgressElem.setSpinPosition(timestampCalendar.get(Calendar.MILLISECOND)/10));
 	        
 	        long lag=lastRemoteTimestamp-lastLocalTimestamp;
-	        consolidated.add(new Alteration(tsDifferenceElem,null,lagFormat.format(lag)));
+	        alternator.add(new Alteration(tsDifferenceElem,null,lagFormat.format(lag)));
 	        
 	        lag=(Math.abs(lag)/50);
-	        if(lag>20) lag=20;		// limit lag for graphical representation
-	        consolidated.add(new Alteration(tsRemoteElem,"transform","translate(0 " + (-lag) + ")"));
-	        consolidated.add(new Alteration(tsLocalElem,"transform","translate(0 " + (lag) + ")"));
-				
-			/*System.out.println("\n\nSHUTTLE");
-			for(Alteration alteration : consolidated)
-				System.out.println("Alteration On [" + alteration + "]");
-			System.out.println("/SHUTTLE\n\n"); */
+	        if(lag>20) lag=20;		// limit lag for graphical representation to avoid eye-watering jitter
+	        if(lag<10) lag=0;
+	        alternator.add(new Alteration(tsRemoteElem,"transform","translate(0 " + (-lag) + ")"));
+	        alternator.add(new Alteration(tsLocalElem,"transform","translate(0 " + (lag) + ")"));
 
-			queueUpdate(new Runnable()
-			{
-				@Override
-				public void run()
-				{
-					for(Alteration alteration : consolidated)
-						alteration.alter();
-				}
-			});
+			queueUpdate(alternator);
 			
 			try
 			{
@@ -504,4 +479,6 @@ public class SarongPanel implements Runnable
 	{
 		this.lastRemoteTimestamp = lastRemoteTimestamp;
 	}
+
+	
 }

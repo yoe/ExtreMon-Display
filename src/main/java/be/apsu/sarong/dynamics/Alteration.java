@@ -13,7 +13,11 @@ public class Alteration
 		super();
 		this.on = on;
 		this.attribute = attribute;
-		this.value = value;
+		
+		if(attribute!=null && attribute.equals("width") && value.equals("0.0"))
+			this.value="0.00001";
+		else
+			this.value = value;
 	}
 
 	public void alter()
@@ -50,6 +54,6 @@ public class Alteration
 	@Override
 	public String toString()
 	{
-		return on.getAttribute("id") + ":" + (attribute!=null?attribute:"cdata");
+		return on.getAttribute("id") + ":" + (attribute!=null?attribute:"cdata") + " ALTER TO " + value;
 	}
 }

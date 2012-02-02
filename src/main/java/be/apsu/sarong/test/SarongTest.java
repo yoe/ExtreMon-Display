@@ -1,5 +1,25 @@
 package be.apsu.sarong.test;
 
+import java.io.IOException;
+import java.net.Authenticator;
+import java.net.MalformedURLException;
+import java.net.PasswordAuthentication;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import javax.swing.JFrame;
+
+import be.apsu.sarong.client.X3Client;
+import be.apsu.sarong.client.X3ClientListener;
+import be.apsu.sarong.client.X3Measure;
+import be.apsu.sarong.client.X3Source;
 import be.apsu.sarong.dynamics.Action;
 import be.apsu.sarong.dynamics.DurationAction;
 import be.apsu.sarong.dynamics.Measure;
@@ -9,17 +29,11 @@ import be.apsu.sarong.dynamics.StateAction;
 import be.apsu.sarong.dynamics.TimestampAction;
 import be.apsu.sarong.panel.SarongPanel;
 import be.apsu.sarong.panel.SarongPanelListener;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
-import javax.swing.JFrame;
-
-public class SarongTest implements SarongPanelListener, CommonRailClientListener
+public class SarongTest implements SarongPanelListener, X3ClientListener
 {
+	private static final Logger logger=Logger.getLogger(SarongTest.class.getName());
+	
     private SarongPanel     				panel;
     private JFrame          				frame;
     private List<Measure>   				measures;
@@ -40,9 +54,30 @@ public class SarongTest implements SarongPanelListener, CommonRailClientListener
         frame.setUndecorated(true);
         frame.setVisible(true);
         
-
         measures=new ArrayList<Measure>();
         labelMeasureAssignments=new HashMap<String,MeasureCacheElement>();
+        
+        Properties properties = new Properties();
+        try
+        {
+            properties.load(this.getClass().getResourceAsStream("/x3mon.credentials"));
+            final String username=properties.getProperty("username");
+            final String password=properties.getProperty("password");
+            Authenticator.setDefault(new Authenticator()
+			{
+				@Override
+				protected PasswordAuthentication getPasswordAuthentication()
+				{
+					return new PasswordAuthentication(username, password.toCharArray());
+				}
+			});
+        }
+        catch (IOException ex)
+        {
+        	logger.log(Level.SEVERE,"Can't read credentials",ex);
+        	System.exit(1);
+        }
+        
 
 //        measure=new Measure("^be\\.apsu\\.([0-9a-z]+)\\.cpu\\.([0-9]+)\\.cpu\\.(user|nice|system|idle|wait|interrupt|softirq|steal)\\.value$");
 //        measure.setCaptures("host,cpu,type");
@@ -222,10 +257,8 @@ public class SarongTest implements SarongPanelListener, CommonRailClientListener
         action.setPanel(panel);
         measures.add(measure);
         
-        
-//                          //be.fedict.eid.prod     .pkiramod.app1       .df.boot    .df_complex.reserved.percentage
-        measure=new Measure("^be.fedict.eid.(prod|ta|int|mon).(dss|pkiramod|idp|pkirapor|trust|tristan|isolde).(app[0-9]).df.([a-z]+).df_complex.(free|used|reserved).percentage$");
-//        measure=new Measure("^be.fedict.eid.(prod|ta).(pkiramod).(app1).df.([a-z]+).df_complex.(free|used|reserved).percentage$");
+        //                    be.fedict.eid. prod.                                pki-ra-por.                       app1.     df.opt-eid-pki-ra-app.df_complex.reserved.value
+        measure=new Measure("^be.fedict.eid.(prod|ta|int|mon).(dss|pki-ra-mod|idp|pki-ra-por|trust|tristan|isolde).(app[0-9]).df.([a-z-]+).df_complex.(free|used|reserved).percentage$");
         measure.setCaptures("env,app,host,mountpoint,metric");
         action=new SetAction("cdata","${formattedValue} %","be.fedict.eid.${env}.${app}.${host}.df.${mountpoint}.${metric}.percentage.span");
         action.setFormat("%.0f");
@@ -237,7 +270,7 @@ public class SarongTest implements SarongPanelListener, CommonRailClientListener
         measures.add(measure);
         
         //                     be.fedict.eid.             mon.                                          isolde.cpu.2.cpu.user.value
-        measure=new Measure("^(be.fedict.eid.(prod|ta|int|mon)\\.(dss|pkiramod|idp|pkirapor|trust|tristan|isolde)\\.?(app[0-9]))?\\.cpu.([0-9]+)\\.cpu\\.(idle|interrupt|nice|softirq|steal|system|user|wait)\\.value$");
+        measure=new Measure("^(be.fedict.eid.(prod|ta|int|mon)\\.(dss|pki-ra-mod|idp|pki-ra-por|trust|tristan|isolde)\\.?(app[0-9]))?\\.cpu.([0-9]+)\\.cpu\\.(idle|interrupt|nice|softirq|steal|system|user|wait)\\.value$");
         measure.setCaptures("prefix,env,app,host,core,metric");
         action=new SetAction("cdata","${formattedValue} % ${metric}","${prefix}.cpu.${core}.cpu.${metric}.value.text");
         action.setFormat("%.0f");
@@ -261,7 +294,7 @@ public class SarongTest implements SarongPanelListener, CommonRailClientListener
         measures.add(measure); */
         
         
-        panel.setURI("file:///data/eid_prod_2012_01_16_0000.svg");
+        panel.setURI("file:///data/eid_prod_2012_02_01.svg");
         //panel.setURI("file:///data/TIMESTAMP.svg"); 
     }
 
@@ -273,94 +306,81 @@ public class SarongTest implements SarongPanelListener, CommonRailClientListener
     @Override
     public void panelReady(SarongPanel panel)
     {
-    	CommonRailClient client=new CommonRailClient();
+    	X3Client client=new X3Client();
+    		     client.addListener(this);
     	
 		try
 		{
-			client.addServer(new URL("https://tristan.eid.belgium.be/x3mon/"));
-			client.setListener(this);
-            client.setProxy("proxy.yourict.net", 8080);
-			client.start();
-		}
+			client.addSource(new X3Source("tristan",new URL("https://tristan.eid.belgium.be/x3mon/be/fedict/eid")));
+			client.addSource(new X3Source("isolde", new URL("https://isolde.eid.belgium.be/x3mon/be/fedict/eid" )));
+			
+			//source.setProxy("proxy.yourict.net", 8080);
+	    	//source.start(this);
+		} 
 		catch (MalformedURLException e)
 		{
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		} 
+		}
     }
 
-	@Override
-	public void commonRailConnected(URL url)
+	public void clientData(X3Client client, Set<X3Measure> changes)
 	{
-		System.out.println("connected to " + url.toString());	
-	}
-
-	@Override
-	public void commonRailDisconnected(URL url)
-	{
-		System.out.println("disconnected from " + url.toString());
-	}
-
-	@Override
-	public void commonRailShuttle(List<String> lines)
-	{	
 		panel.startUpdate();
 		
 		try
 		{
-			for(String line: lines)
-	        {
-	            String[] labelValue=line.split("=");
-	            if(labelValue.length==2)
-	            {
-	            	if(labelMeasureAssignments.containsKey(labelValue[0]))
+			for(X3Measure change:changes)
+			{
+				logger.log(Level.FINEST,"CLIENTDATA [" + change.label + "=" + change.value + "]");
+				
+				if(labelMeasureAssignments.containsKey(change.label))
+	        	{
+	        		MeasureCacheElement mceFound=labelMeasureAssignments.get(change.label);
+	            	if(mceFound!=null)
 	            	{
-	            		MeasureCacheElement mceFound=labelMeasureAssignments.get(labelValue[0]);
-		            	if(mceFound!=null)
-		            	{
-		            		try
-			                {
-		            			mceFound.getMeasure().act(mceFound.getVariables(),labelValue[1]);
-			                }
-			                catch(Exception ex)
-			                {
-			                    System.err.println(ex.toString());
-			                }
-		            	}
+	            		try
+		                {
+	            			mceFound.getMeasure().act(mceFound.getVariables(),change.value);
+		                }
+		                catch(Exception ex)
+		                {
+		                    System.err.println(ex.toString());
+		                }
 	            	}
-	            	else
-	            	{
-	            		boolean found=false;
-			            for(Measure measure: measures)
-			            {
-			                try
-			                {
-			                	Map<String,String> variables=measure.evaluate(labelValue[0], labelValue[1]);
-			                    if(variables!=null)
-			                    {
-			                    	System.err.println("Caching " + labelValue[0]);
-			                    	labelMeasureAssignments.put(labelValue[0], new MeasureCacheElement(measure, variables));
-			                    	measure.act(variables, labelValue[1]);
-			                    	found=true;
-			                        break;
-			                    }
-			                }
-			                catch(Exception ex)
-			                {
-			                    System.err.println(ex.toString());
-			                }
-			            }
-			            
-			            if(!found)
-			            	labelMeasureAssignments.put(labelValue[0],null);	// negative cache entry
-	            	}
-	            }
-	        }
+	        	}
+	        	else
+	        	{
+	        		boolean found=false;
+		            for(Measure measure: measures)
+		            {
+		                try
+		                {
+		                	Map<String,String> variables=measure.evaluate(change.label, change.value);
+		                    if(variables!=null)
+		                    {
+		                    	logger.finest("Caching " + change.label);
+		                    	labelMeasureAssignments.put(change.label, new MeasureCacheElement(measure, variables));
+		                    	measure.act(variables, change.value);
+		                    	found=true;
+		                        break;
+		                    }
+		                }
+		                catch(Exception ex)
+		                {
+		                	logger.log(Level.INFO,"client data interpretation error",ex);
+		                }
+		            }
+		            
+		            if(!found)
+		            	labelMeasureAssignments.put(change.label,null);	// negative cache entry
+	        	}
+			}
 		}
 		finally
 		{
 			panel.endUpdate();
-		}
+		}	
 	}
 }
 

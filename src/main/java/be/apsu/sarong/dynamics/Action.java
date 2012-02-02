@@ -1,11 +1,15 @@
 package be.apsu.sarong.dynamics;
 
-import be.apsu.sarong.panel.SarongCanvas;
-import be.apsu.sarong.panel.SarongPanel;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import org.w3c.dom.Element;
+
+import be.apsu.sarong.panel.SarongCanvas;
+import be.apsu.sarong.panel.SarongPanel;
 
 /**
  *
@@ -13,6 +17,8 @@ import org.w3c.dom.Element;
  */
 public abstract class Action
 {
+	private static final Logger logger=Logger.getLogger(Action.class.getName());
+	
     private String          attribute;
     private String          valueTemplate;
     private String          onTemplate;
@@ -122,18 +128,10 @@ public abstract class Action
 
     public abstract void performAction(Map<String,String> variables, double nValue, String sValue);
     
-    
-    protected void queueUpdate(Runnable updateMethod)
-    {
-        if(getCanvas()==null)
-			return;
-        
-        getCanvas().queueUpdate(updateMethod);
-    }
 
     protected void queueSet(final String on, final String value)
     {
-    	System.out.println("queueSet(" + on + "." + getAttribute() + "=" + value + ")");
+    	logger.log(Level.FINEST,"queueSet(" + on + "." + getAttribute() + "=" + value + ")");
     	if(getAttribute().equals("cdata"))
     		panel.queueAlteration(getElement(on),null,value);
     	else
