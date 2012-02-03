@@ -1,6 +1,0 @@
-<sarong>
-	<measure id="^be\.apsu\.([0-9a-z]+)\.cpu\.([0-9]+)\.cpu\.(user|nice|system|idle|wait|interrupt|softirq|steal)\.value$" capture="host,cpu,type">
-			<set width="${value}" on="be.apsu.${host}.cpu.${cpu}.core.${type}.bar" multiplier="1.0"/>
-			<set cdata="${value}" on="be.apsu.${host}.cpu.${cpu}.core.${type}.span" format="%.1f%" multiplier="1.0"/>
-	</measure>
-</sarong>
