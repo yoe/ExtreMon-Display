@@ -25,6 +25,7 @@ import org.w3c.dom.Element;
 
 public class Alteration
 {
+	private static final int	MAGIC_PRIME	=31;
 	private Element	on;
 	private String	attribute;
 	private String	value;
@@ -35,46 +36,54 @@ public class Alteration
 		this.on = on;
 		this.attribute = attribute;
 		
-		if(attribute!=null && attribute.equals("width") && value.equals("0.0"))
+		if(attribute!=null && value!=null && attribute.equals("width") && value.equals("0.0"))
 			this.value="0.00001";
 		else
 			this.value = value;
 	}
-
-	public void alter()
+	
+	public Alteration(Element on, String value)
 	{
-		if (attribute != null)
-			on.setAttribute(attribute, value);
+		super();
+		this.on = on;
+		this.attribute = null;
+		this.value=value;
+	}
+
+	public final void alter()
+	{
+		if (this.attribute != null)
+			this.on.setAttribute(this.attribute, this.value);
 		else
-			on.setTextContent(value);
+			this.on.setTextContent(this.value);
 	}
 
 	// our identity in collections depends on the element:attribute tuple we act upon
 	// so we get replaced by the last instance acting on the same element
 
 	@Override
-	public boolean equals(Object _that)
+	public final boolean equals(Object thatObject)
 	{
-		if (this == _that)
+		if (this == thatObject)
 			return true;
-		if(!(_that instanceof Alteration))
+		if(!(thatObject instanceof Alteration))
 			return false;
-		Alteration that = (Alteration)_that;
+		final Alteration that = (Alteration)thatObject;
 		return (this.on.equals(that.on)) && ((this.attribute == null) ? that.attribute == null : this.attribute.equals(that.attribute));
 	}
 
 	@Override
-	public int hashCode()
+	public final int hashCode()
 	{
 		int hash = 1;
-		hash = hash * 31 + on.hashCode();
-		hash = hash * 31 + (attribute == null ? 0 : attribute.hashCode());
+		hash = hash * MAGIC_PRIME + this.on.hashCode();
+		hash = hash * MAGIC_PRIME + (this.attribute == null ? 0 : this.attribute.hashCode());
 		return hash;
 	}
 
 	@Override
-	public String toString()
+	public final String toString()
 	{
-		return on.getAttribute("id") + ":" + (attribute!=null?attribute:"cdata") + " ALTER TO " + value;
+		return this.on.getAttribute("id") + ":" + (this.attribute!=null?this.attribute:"cdata") + " ALTER TO " + this.value;
 	}
 }

@@ -23,5 +23,5 @@ package be.apsu.extremon.panel;
 
 public interface X3PanelListener
 {
-	public void panelReady(X3Panel panel);
+	void panelReady(X3Panel panel);
 }

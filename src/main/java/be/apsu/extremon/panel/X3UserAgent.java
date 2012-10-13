@@ -33,29 +33,29 @@ public class X3UserAgent extends SVGUserAgentAdapter
 	public X3UserAgent()
 	{
 		super();
-		logger=Logger.getLogger(X3UserAgent.class.getName());
+		this.logger=Logger.getLogger(X3UserAgent.class.getName());
 	}
 
-	public void setLogger(Logger logger)
+	public final void setLogger(Logger logger)
 	{
 		this.logger=logger;
 	}
 
 	@Override
-	public void displayError(Exception ex)
+	public final void displayError(Exception ex)
 	{
-		logger.log(Level.SEVERE,"Batik Error",ex);
+		this.logger.log(Level.SEVERE,"Batik Error",ex);
 	}
 
 	@Override
-	public void displayError(String message)
+	public final void displayError(String message)
 	{
-		logger.log(Level.SEVERE,message);
+		this.logger.log(Level.SEVERE,message);
 	}
 
 	@Override
-	public void displayMessage(String message)
+	public final void displayMessage(String message)
 	{
-		logger.log(Level.INFO,message);
+		this.logger.log(Level.INFO,message);
 	}
 }

@@ -38,7 +38,7 @@ public class X3Canvas extends JSVGCanvas
 		super(ua,eventsEnabled,selectableText);
 	}
 	
-	public void queueUpdate(Runnable updater)
+	public final void queueUpdate(Runnable updater)
 	{
 		getUpdateManager().getUpdateRunnableQueue().invokeLater(updater);
 	}

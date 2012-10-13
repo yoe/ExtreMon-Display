@@ -23,32 +23,33 @@ package be.apsu.extremon.dynamics;
 
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Set;
 
 public class Alternator implements Runnable
 {
-	private HashSet<Alteration> alterations;
+	private Set<Alteration> alterations;
 
 	public Alternator()
 	{
-		alterations=new HashSet<Alteration>();
+		this.alterations=new HashSet<Alteration>();
 	}
 
-	public Alternator addAll(Collection<Alteration> moreAlterations)
+	public final Alternator addAll(Collection<Alteration> moreAlterations)
 	{
-		alterations.addAll(moreAlterations);
+		this.alterations.addAll(moreAlterations);
 		return this;
 	}
 	
-	public Alternator add(Alteration anotherAlteration)
+	public final Alternator add(final Alteration anotherAlteration)
 	{
-		alterations.add(anotherAlteration);
+		this.alterations.add(anotherAlteration);
 		return this;
 	}
 
 	@Override
-	public void run()
+	public final void run()
 	{
-		for(Alteration alteration : alterations)
+		for(Alteration alteration : this.alterations)
 			alteration.alter();
 	}
 }
