@@ -21,6 +21,8 @@
 
 package be.apsu.extremon.console;
 
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.Authenticator;
 import java.net.MalformedURLException;
 import java.net.PasswordAuthentication;
@@ -32,7 +34,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.net.ssl.HttpsURLConnection;
+import javax.smartcardio.CardException;
 import javax.swing.JFrame;
+
+import org.apache.commons.codec.binary.Base64;
 
 import be.apsu.extremon.client.X3Client;
 import be.apsu.extremon.client.X3Drain;
@@ -41,7 +46,9 @@ import be.apsu.extremon.panel.CredentialsDialog;
 import be.apsu.extremon.panel.ResponderListener;
 import be.apsu.extremon.panel.X3Panel;
 import be.apsu.extremon.panel.X3PanelListener;
+import be.fedict.commons.eid.client.BeIDCard;
 import be.fedict.commons.eid.client.BeIDCards;
+import be.fedict.commons.eid.client.FileType;
 import be.fedict.commons.eid.jca.BeIDProvider;
 import be.fedict.commons.eid.jca.BeIDSocketFactory;
 
@@ -56,6 +63,7 @@ public class X3Console implements X3PanelListener, ResponderListener
 	private X3Source			source;
 	private X3Drain				drain;
 	private BeIDCards			beID;
+	private String				encodedUserPhoto;
 
 	public X3Console(final String svgURL,final String chaliceURL, final String responderURL)
 	{
@@ -90,7 +98,7 @@ public class X3Console implements X3PanelListener, ResponderListener
 			try
 			{
 				HttpsURLConnection.setDefaultSSLSocketFactory(BeIDSocketFactory.getSSLSocketFactory());
-			}
+			}			
 			catch(KeyManagementException e)
 			{
 				// TODO Auto-generated catch block
@@ -160,11 +168,35 @@ public class X3Console implements X3PanelListener, ResponderListener
 				{
 					LOGGER.log(Level.SEVERE,"ExtreMon BeID Identification requires missing algorithm",e);
 				}
-				drain.start();
+				
+				BeIDCard card=beID.getAllBeIDCards().iterator().next();
+				String encodedUserPhoto=new String(Base64.encodeBase64(card.readFile(FileType.Photo)),"utf-8").replace('=','|');
+				drain.put("user.photo",encodedUserPhoto);
+				drain.start();	
 			}
 			catch(MalformedURLException e)
 			{
 				LOGGER.log(Level.SEVERE,"Responder URL is Unusable",e);
+			}
+			catch(UnsupportedEncodingException e1)
+			{
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+			catch(CardException e1)
+			{
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+			catch(IOException e1)
+			{
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+			catch(InterruptedException e1)
+			{
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
 			}
 		}
 		
@@ -173,8 +205,8 @@ public class X3Console implements X3PanelListener, ResponderListener
 	@Override
 	public void responding(String label,boolean responding)
 	{
-		drain.put(label + ".responding",responding);
 		System.err.println("sending [" + label + ".responding=" + responding + "]");
+		drain.put(label + ".responding",responding);
 	}
 
 	@Override
@@ -187,8 +219,7 @@ public class X3Console implements X3PanelListener, ResponderListener
 	@Override
 	public void heartBeat(double timeDiff)
 	{
-		System.err.println(".");
-		drain.put("remote.timediff",timeDiff);	
+		drain.put("user.lag",timeDiff);	
 	}
 	
 	public static void main(String[] args)
