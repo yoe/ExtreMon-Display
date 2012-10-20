@@ -4,7 +4,7 @@
   <groupId>be.apsu.extremon</groupId>
   <artifactId>extremon-console</artifactId>
   <packaging>jar</packaging>
-  <version>1.2.0-SNAPSHOT</version>
+  <version>1.0-SNAPSHOT</version>
   <name>ExtreMon Console</name>
   <description>Display live monitoring data on the SVG Schematic of the monitored system(s)</description>
   <url>https://extremon.org/</url>

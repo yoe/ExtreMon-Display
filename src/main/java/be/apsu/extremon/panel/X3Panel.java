@@ -23,7 +23,6 @@ package be.apsu.extremon.panel;
 
 import java.awt.Color;
 import java.awt.event.InputEvent;
-import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -50,6 +49,9 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.w3c.dom.Text;
+import org.w3c.dom.events.Event;
+import org.w3c.dom.events.EventListener;
+import org.w3c.dom.events.EventTarget;
 import org.w3c.dom.svg.SVGDocument;
 
 import be.apsu.extremon.client.X3Client;
@@ -60,6 +62,8 @@ import be.apsu.extremon.dynamics.Alteration;
 import be.apsu.extremon.dynamics.Alternator;
 import be.apsu.extremon.dynamics.CountdownSetAction;
 import be.apsu.extremon.dynamics.NumericSetAction;
+import be.apsu.extremon.dynamics.Respondable;
+import be.apsu.extremon.dynamics.Subscription;
 import be.apsu.extremon.dynamics.TextSetAction;
 import be.apsu.extremon.dynamics.TimestampSetAction;
 import be.apsu.extremon.svgutils.SVGUtils;
@@ -91,7 +95,8 @@ public class X3Panel implements Runnable,X3ClientListener
 	private String							name;
 	private X3Canvas						canvas;
 	private SVGDocument						document;
-	private Set<X3PanelListener>			listeners;
+	private Set<X3PanelListener>			panelListeners;
+	private Set<ResponderListener>			responderListeners;
 	private Map<String,Element>				liveElements;
 	private BlockingQueue<Set<Alteration>>	alterations;
 	private Set<Alteration>					alterationsInShuttle;
@@ -99,7 +104,10 @@ public class X3Panel implements Runnable,X3ClientListener
 	private Map<String,String>				defines;
 	private Pattern							mapConfigPattern;
 	private Map<String,Set<AbstractAction>>	actions;
+	private Map<Element,Respondable>		respondablesByElement;
+	private Map<String,Respondable>			respondablesByLabel;
 	private String							subscription;
+	private long							lastHeartBeat;
 
 	public X3Panel(String name)
 	{
@@ -109,13 +117,17 @@ public class X3Panel implements Runnable,X3ClientListener
 		this.canvas.setDocumentState(JSVGCanvas.ALWAYS_DYNAMIC);
 		this.canvas.setAnimationLimitingNone();
 		this.canvas.setBackground(Color.black);
-		this.listeners=new HashSet<X3PanelListener>();
+		this.panelListeners=new HashSet<X3PanelListener>();
+		this.responderListeners=new HashSet<ResponderListener>();
 		this.liveElements=new HashMap<String,Element>();
 		this.alterations=new ArrayBlockingQueue<Set<Alteration>>(EXPECTED_ALTERATIONS);
 		this.alterationsInShuttle=new HashSet<Alteration>(EXPECTED_ALTERATIONS_IN_SHUTTLE);
 		this.defines=new HashMap<String,String>();
 		this.mapConfigPattern=Pattern.compile("([a-z0-9._-]*):([a-z]+)\\((.*)\\)");
 		this.actions=new HashMap<String,Set<AbstractAction>>();
+		this.respondablesByElement=new HashMap<Element,Respondable>();
+		this.respondablesByLabel=new HashMap<String,Respondable>();
+		this.lastHeartBeat=0L;
 
 		this.canvas.addSVGLoadEventDispatcherListener(new SVGLoadEventDispatcherAdapter()
 		{
@@ -131,6 +143,78 @@ public class X3Panel implements Runnable,X3ClientListener
 			public void svgLoadEventDispatchCompleted(SVGLoadEventDispatcherEvent e)
 			{
 				super.svgLoadEventDispatchCompleted(e);
+				
+				EventTarget t = (EventTarget)X3Panel.this.document;
+				t.addEventListener("click",new EventListener()
+				{
+					@Override
+					public void handleEvent(Event evt)
+					{
+						Respondable respondable=X3Panel.this.respondablesByElement.get((Element)evt.getTarget());
+						if(respondable!=null)
+						{
+							if(!respondable.isResponding())
+							{	
+								for(ResponderListener listener:X3Panel.this.responderListeners)
+								{
+									try
+									{
+										listener.responding(respondable.getLabel(),true);
+									}
+									catch(Exception anyEx)
+									{
+										LOGGER.log(Level.WARNING,"Exception in ResponderListener",anyEx);
+									}
+								}
+							}
+							else
+							{
+								for(ResponderListener listener:X3Panel.this.responderListeners)
+								{
+									try
+									{
+										listener.responding(respondable.getLabel(),false);
+									}
+									catch(Exception anyEx)
+									{
+										LOGGER.log(Level.WARNING,"Exception in ResponderListener",anyEx);
+									}
+								}
+							}
+						}
+					}
+				},true);
+				
+//				t.addEventListener("keydown",new EventListener()
+//				{
+//					@Override
+//					public void handleEvent(Event evt)
+//					{
+//						Element respondable=(Element)evt.getTarget();
+//						String respondableLabel=X3Panel.this.respondables.get(respondable);
+//						if(respondableLabel!=null)
+//						{
+//							String comment=X3Panel.this.responding.get(respondableLabel);
+//							if(comment!=null)
+//							{
+//								DOMKeyEvent keyEvent=(DOMKeyEvent)evt;
+//								comment=comment+=keyEvent.getCharCode();	
+//								for(ResponderListener listener:X3Panel.this.responderListeners)
+//								{
+//									try
+//									{
+//										listener.responderComment(respondableLabel,comment);
+//									}
+//									catch(Exception anyEx)
+//									{
+//										LOGGER.log(Level.WARNING,"Exception in ResponderListener",anyEx);
+//									}
+//								}
+//								X3Panel.this.responding.put(respondableLabel,comment);
+//							}
+//						}
+//					}
+//				},true);
 
 				inhaleDefines(X3Panel.this.document);
 				materializeTemplateUsages(X3Panel.this.document);
@@ -142,7 +226,7 @@ public class X3Panel implements Runnable,X3ClientListener
 
 				X3Panel.this.canvas.setEnableResetTransformInteractor(true);
 
-				for(final X3PanelListener listener:X3Panel.this.listeners)
+				for(final X3PanelListener listener:X3Panel.this.panelListeners)
 				{
 					listener.panelReady(X3Panel.this);
 				}
@@ -153,7 +237,6 @@ public class X3Panel implements Runnable,X3ClientListener
 
 				final Interactor panInteractor=new AbstractPanInteractor()
 				{
-
 					@Override
 					public boolean startInteraction(InputEvent ie)
 					{
@@ -181,7 +264,7 @@ public class X3Panel implements Runnable,X3ClientListener
 					{
 						final int mods=ie.getModifiers();
 						return ie.getID()==MouseEvent.MOUSE_PRESSED&&(mods&InputEvent.BUTTON3_MASK)!=0;
-					}
+					}	
 				};
 
 				final List<Interactor> interactors=X3Panel.this.canvas.getInteractors();
@@ -193,10 +276,16 @@ public class X3Panel implements Runnable,X3ClientListener
 		});
 	}
 
-	public final X3Panel addKeyListener(KeyListener keyListener)
+	protected void assembleSubscription()
 	{
-		this.canvas.addKeyListener(keyListener);
-		return this;
+		Subscription 		subscription=new Subscription();
+							subscription.registerMeta(".state","responding");
+							subscription.registerMeta(".state","responder");
+							subscription.registerMeta(".state","responder.comment");
+							subscription.addLabels(this.actions.keySet());
+		this.subscription=	subscription.getSubscription();
+		
+		
 	}
 
 	public final X3Panel reset()
@@ -256,9 +345,15 @@ public class X3Panel implements Runnable,X3ClientListener
 		return this;
 	}
 
-	public final X3Panel addListener(X3PanelListener listener)
+	public final X3Panel addPanelListener(X3PanelListener listener)
 	{
-		this.listeners.add(listener);
+		this.panelListeners.add(listener);
+		return this;
+	}
+	
+	public final X3Panel addResponderListener(ResponderListener listener)
+	{
+		this.responderListeners.add(listener);
 		return this;
 	}
 
@@ -287,7 +382,6 @@ public class X3Panel implements Runnable,X3ClientListener
 		final String mappingsStr=SVGUtils.getX3MonMap(node);
 		if(mappingsStr!=null)
 		{
-			System.err.println(node.getTextContent());
 			final String[] mappings=mappingsStr.split(";");
 			for(String mappingStr:mappings)
 			{
@@ -310,12 +404,12 @@ public class X3Panel implements Runnable,X3ClientListener
 
 						if(arguments.length==NSET_ARGUMENTS_NAME_FORMAT)
 						{
-							addAction(label,new NumericSetAction(this,(Element)node,attributeName.isEmpty()?null:attributeName,format));
+							addAction(label,(Element)node,new NumericSetAction(this,(Element)node,attributeName.isEmpty()?null:attributeName,format));
 						}
 						else if(arguments.length==NSET_ARGUMENTS_NAME_FORMAT_MULTIPLIER)
 						{
 							final double scale=Double.parseDouble(arguments[2]);
-							addAction(label,new NumericSetAction(this,(Element)node,attributeName.isEmpty()?null:attributeName,format,scale));
+							addAction(label,(Element)node,new NumericSetAction(this,(Element)node,attributeName.isEmpty()?null:attributeName,format,scale));
 						}
 					}
 					else if(actionStr.equals("tset")&&arguments.length==2)
@@ -323,19 +417,19 @@ public class X3Panel implements Runnable,X3ClientListener
 						final String attributeName=arguments[0];
 						final String format=arguments[1];
 						LOGGER.fine("on "+label+" do TextSetAction "+(attributeName.isEmpty()?"cdata":attributeName)+" to "+format);
-						addAction(label,new TextSetAction(this,(Element)node,attributeName.isEmpty()?null:attributeName,format));
+						addAction(label,(Element)node,new TextSetAction(this,(Element)node,attributeName.isEmpty()?null:attributeName,format));
 					}
 					else if(actionStr.equals("tsset")&&arguments.length==2)
 					{
 						final String attributeName=arguments[0];
 						final String format=arguments[1];
-						addAction(label,new TimestampSetAction(this,(Element)node,attributeName.isEmpty()?null:attributeName,format));
+						addAction(label,(Element)node,new TimestampSetAction(this,(Element)node,attributeName.isEmpty()?null:attributeName,format));
 					}
 					else if(actionStr.equals("cdset")&&arguments.length==2)
 					{
 						final String attributeName=arguments[0];
 						final String format=arguments[1];
-						addAction(label,new CountdownSetAction(this,(Element)node,attributeName.isEmpty()?null:attributeName,format));
+						addAction(label,(Element)node,new CountdownSetAction(this,(Element)node,attributeName.isEmpty()?null:attributeName,format));
 					}
 				}
 				else
@@ -354,16 +448,36 @@ public class X3Panel implements Runnable,X3ClientListener
 			path.remove(path.size()-1);
 	}
 
-	private void addAction(String label,AbstractAction action)
+	private void addAction(String label,Element element, AbstractAction action)
 	{
 		Set<AbstractAction> actionsForThisLabel=this.actions.get(label);
 		if(actionsForThisLabel==null)
 		{
 			actionsForThisLabel=new HashSet<AbstractAction>();
+			System.err.println("Adding Actions for [" + label + "]");
 			this.actions.put(label,actionsForThisLabel);
 		}
-
+			
 		actionsForThisLabel.add(action);
+		
+		if(label.endsWith(".state"))
+		{
+			LOGGER.finest("Adding Respondable [" + label + "]");
+			System.err.println("Adding Respondable [" + label + "]");
+			addRespondable(element,label);
+		}
+	}
+	
+	private void addRespondable(Element element,String label)
+	{
+		Respondable respondable=this.respondablesByLabel.get(label);
+		if(respondable==null)
+		{
+			respondable=new Respondable(element,label);
+			this.respondablesByLabel.put(label,respondable);
+		}
+		
+		this.respondablesByElement.put(element,respondable);
 	}
 
 	private void registerMappings(Node node)
@@ -436,62 +550,7 @@ public class X3Panel implements Runnable,X3ClientListener
 			this.inhaleDefines(kids.item(i));
 	}
 
-	private void assembleSubscription()
-	{
-		int shortestPath=Integer.MAX_VALUE;
-		final List<Set<String>> groups=new ArrayList<Set<String>>();
-
-		System.err.println(this.actions.keySet().size()+" labels");
-
-		for(String label:this.actions.keySet())
-		{
-			if(label.startsWith("local."))
-				continue;
-			
-			final String[] labelParts=label.split("\\.");
-			for(int i=0;i<labelParts.length;i+=1)
-			{
-				if(i>groups.size()-1)
-					groups.add(new HashSet<String>());
-				groups.get(i).add(labelParts[i]);
-			}
-
-			if(labelParts.length<shortestPath)
-				shortestPath=labelParts.length;
-		}
-
-		final List<String> regexParts=new ArrayList<String>();
-
-		int position=0;
-		for(Set<String> groupItems:groups)
-		{
-			final StringBuilder builder=new StringBuilder();
-
-			if(position<shortestPath)
-			{
-				builder.append('/');
-				if(groupItems.size()>1)
-					builder.append('(');
-				builder.append(SVGUtils.join(groupItems,"|"));
-				if(groupItems.size()>1)
-					builder.append(')');
-			}
-			else
-			{
-				builder.append("(/");
-				if(groupItems.size()>1)
-					builder.append('(');
-				builder.append(SVGUtils.join(groupItems,"|"));
-				if(groupItems.size()>1)
-					builder.append(')');
-				builder.append("|$)");
-			}
-			regexParts.add(builder.toString());
-			position+=1;
-		}
-
-		this.subscription=SVGUtils.join(regexParts,"");
-	}
+	
 
 	@Override
 	public final void run()
@@ -541,26 +600,90 @@ public class X3Panel implements Runnable,X3ClientListener
 	{
 		final double localTime=((double)System.currentTimeMillis())/MILLISECONDS;
 		measures.add(new X3Measure("local.timestamp",String.valueOf(localTime)));
+		
+		if(System.currentTimeMillis()>(lastHeartBeat+1000))
+		{
+			//System.err.println("heartbeat");
+			for(ResponderListener listener:X3Panel.this.responderListeners)
+			{
+				try
+				{
+					listener.heartBeat(0.0);
+				}
+				catch(Exception anyEx)
+				{
+					LOGGER.log(Level.WARNING,"Exception in ResponderListener",anyEx);
+				}
+			}
+			lastHeartBeat=System.currentTimeMillis();
+		}
 
 		this.startUpdate();
 
 		try
 		{
-			for(X3Measure measure:measures)
+			for(final X3Measure measure:measures)
 			{
-				final Set<AbstractAction> actionsRequired=this.actions.get(measure.getLabel());
-				if(actionsRequired!=null)
-				{
-					for(AbstractAction actionRequired:actionsRequired)
-					{
-						actionRequired.perform(measure.getValue());
-					}
-				}
+				if(measure.getLabel().endsWith(".responding"))
+					clientRespondingMeasure(measure.getLabel().substring(0,measure.getLabel().length()-11),measure.getValue());
+				else
+					clientMeasure(measure.getLabel(),measure.getValue());
 			}
 		}
 		finally
 		{
 			this.endUpdate();
+		}
+	}
+	
+	private final void clientRespondingMeasure(final String label, final String value)
+	{
+		System.err.println("RespondingMeasure");
+		Respondable respondable=this.respondablesByLabel.get(label);
+		if(respondable!=null)
+		{
+			if(value.equals("1"))
+			{
+				respondable.setResponding(true);
+				System.err.println(label + ".responding=true");
+			}
+			else
+			{
+				respondable.setResponding(false);
+				System.err.println(label + ".responding=false");
+			}
+			
+			performActions(label,String.valueOf(respondable.getDisplayState()));
+		}
+	}
+	
+	private final void clientMeasure(final String label, final String _value)
+	{	
+		String value=_value;
+		if(label.endsWith(".state"))
+		{
+			Respondable respondable=this.respondablesByLabel.get(label);
+			if(respondable!=null)
+			{
+				respondable.setState(Integer.parseInt(value));
+				performActions(label,String.valueOf(respondable.getDisplayState()));
+			}
+		}
+		else
+		{
+			performActions(label,value);
+		}
+	}
+
+	private void performActions(final String label,String value)
+	{
+		final Set<AbstractAction> actionsRequired=this.actions.get(label);
+		if(actionsRequired!=null)
+		{
+			for(AbstractAction actionRequired:actionsRequired)
+			{
+				actionRequired.perform(value);
+			}
 		}
 	}
 }
