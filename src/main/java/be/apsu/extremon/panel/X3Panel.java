@@ -103,6 +103,7 @@ public class X3Panel implements Runnable,X3ClientListener
 	private boolean							running;
 	private Map<String,String>				defines;
 	private Pattern							mapConfigPattern;
+	private Pattern							responderPattern;
 	private Map<String,Set<AbstractAction>>	actions;
 	private Map<Element,Respondable>		respondablesByElement;
 	private Map<String,Respondable>			respondablesByLabel;
@@ -124,6 +125,7 @@ public class X3Panel implements Runnable,X3ClientListener
 		this.alterationsInShuttle=new HashSet<Alteration>(EXPECTED_ALTERATIONS_IN_SHUTTLE);
 		this.defines=new HashMap<String,String>();
 		this.mapConfigPattern=Pattern.compile("([a-z0-9._-]*):([a-z]+)\\((.*)\\)");
+		this.responderPattern=Pattern.compile("^(.*)\\.(responding|responder\\.name|responder\\.comment)$");
 		this.actions=new HashMap<String,Set<AbstractAction>>();
 		this.respondablesByElement=new HashMap<Element,Respondable>();
 		this.respondablesByLabel=new HashMap<String,Respondable>();
@@ -280,7 +282,7 @@ public class X3Panel implements Runnable,X3ClientListener
 	{
 		Subscription 		subscription=new Subscription();
 							subscription.registerMeta(".state","responding");
-							subscription.registerMeta(".state","responder");
+							subscription.registerMeta(".state","responder.name");
 							subscription.registerMeta(".state","responder.comment");
 							subscription.addLabels(this.actions.keySet());
 		this.subscription=	subscription.getSubscription();
@@ -300,6 +302,48 @@ public class X3Panel implements Runnable,X3ClientListener
 		final Text descriptionText=this.document.createTextNode(text);
 		description.appendChild(descriptionText);
 		return description;
+	}
+	
+	final Element createResponderNameLabel(Element target, String name)
+	{
+		final double x=Double.parseDouble(target.getAttribute("x"));
+		final double y=10.0+(Double.parseDouble(target.getAttribute("y"))+(Double.parseDouble(target.getAttribute("height"))));
+		final Element nameLabel=this.document.createElementNS("http://www.w3.org/2000/svg","text");
+		String style=this.defines.get("respondernamehidden");
+		if(style!=null)
+			nameLabel.setAttribute("style",style);
+		nameLabel.setAttribute("x",String.valueOf(x));
+		nameLabel.setAttribute("y",String.valueOf(y));
+		final Text nameText=this.document.createTextNode(name);
+		nameLabel.appendChild(nameText);
+		return nameLabel;
+	}
+	
+	public final String trigramFromName(final String _name)
+	{
+		String[] nameParts=_name.toUpperCase().split(" ");
+		StringBuilder builder=new StringBuilder();
+		
+		switch(nameParts.length)
+		{
+			case 1: 
+				builder.append(nameParts[0].substring(0,2));
+			break;
+			
+			case 2:
+				builder.append(nameParts[0].substring(0,1));
+				builder.append(nameParts[1].substring(0,2));
+			break;
+			
+			default:
+				for(int i=0;i<nameParts.length;i++)
+				{
+					builder.append(nameParts[i].substring(0,1));
+				}
+			break;
+		}
+			
+		return builder.toString();
 	}
 
 	public final void start()
@@ -470,14 +514,21 @@ public class X3Panel implements Runnable,X3ClientListener
 	
 	private void addRespondable(Element element,String label)
 	{
-		Respondable respondable=this.respondablesByLabel.get(label);
-		if(respondable==null)
+		if(element.getNodeName().equalsIgnoreCase("rect"))
 		{
-			respondable=new Respondable(element,label);
-			this.respondablesByLabel.put(label,respondable);
+			Respondable respondable=this.respondablesByLabel.get(label);
+			if(respondable==null)
+			{
+				respondable=new Respondable(element,label);
+				Element responderNameLabel=createResponderNameLabel(element,"***");
+				respondable.setResponderNameElement(responderNameLabel);
+				element.getParentNode().appendChild(responderNameLabel);
+				
+				this.respondablesByLabel.put(label,respondable);
+			}
+			
+			this.respondablesByElement.put(element,respondable);
 		}
-		
-		this.respondablesByElement.put(element,respondable);
 	}
 
 	private void registerMappings(Node node)
@@ -624,8 +675,9 @@ public class X3Panel implements Runnable,X3ClientListener
 		{
 			for(final X3Measure measure:measures)
 			{
-				if(measure.getLabel().endsWith(".responding"))
-					clientRespondingMeasure(measure.getLabel().substring(0,measure.getLabel().length()-11),measure.getValue());
+				final Matcher matcher=this.responderPattern.matcher(measure.getLabel());
+				if(matcher.matches())
+					clientRespondingMeasure(matcher.group(1),matcher.group(2),measure.getValue());
 				else
 					clientMeasure(measure.getLabel(),measure.getValue());
 			}
@@ -636,21 +688,39 @@ public class X3Panel implements Runnable,X3ClientListener
 		}
 	}
 	
-	private final void clientRespondingMeasure(final String label, final String value)
+	private final void clientRespondingMeasure(final String label, final String type, final String value)
 	{
 		System.err.println("RespondingMeasure");
 		Respondable respondable=this.respondablesByLabel.get(label);
 		if(respondable!=null)
 		{
-			if(value.equals("1"))
+			if(type.equals("responding"))
 			{
-				respondable.setResponding(true);
-				System.err.println(label + ".responding=true");
+				boolean responding=value.equals("1");
+				
+				if(responding!=respondable.isResponding())
+				{
+					respondable.setResponding(responding);
+					
+					String visibleResponderNameStyle=this.getDefinedValue("respondernamevisible");
+					String hiddenResponderNameStyle=this.getDefinedValue("respondernamehidden");
+					if(visibleResponderNameStyle!=null && hiddenResponderNameStyle!=null)
+					{
+						TextSetAction tsa=new TextSetAction(this,respondable.getResponderNameElement(),"style","#");
+						tsa.perform(responding?visibleResponderNameStyle:hiddenResponderNameStyle);
+					}	
+				}
 			}
-			else
+			else if(type.equals("responder.name"))
 			{
-				respondable.setResponding(false);
-				System.err.println(label + ".responding=false");
+				respondable.setResponderName(value);
+				TextSetAction tsa=new TextSetAction(this,respondable.getResponderNameElement(),null,"#");
+				tsa.perform(trigramFromName(value));
+
+			}
+			else if(type.equals("responder.comment"))
+			{
+				respondable.setComment(value);
 			}
 			
 			performActions(label,String.valueOf(respondable.getDisplayState()));

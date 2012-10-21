@@ -7,14 +7,16 @@ import be.apsu.extremon.STATE;
 public class Respondable
 {
 	private String	label;
-	private Element element;
+	private Element targetElement;
 	private int		state;
 	private boolean	responding;
 	private String	comment;
+	private String 	responderName;
+	private Element	responderNameElement;
 	
-	public Respondable(Element element,String label)
+	public Respondable(Element targetElement,String label)
 	{
-		this.element=element;
+		this.targetElement=targetElement;
 		this.label=label;
 		this.responding=false;
 	}
@@ -27,16 +29,6 @@ public class Respondable
 	public void setLabel(String label)
 	{
 		this.label=label;
-	}
-	
-	public Element getElement()
-	{
-		return element;
-	}
-	
-	public void setElement(Element element)
-	{
-		this.element=element;
 	}
 	
 	public int getState()
@@ -76,4 +68,34 @@ public class Respondable
 	{
 		return responding;
 	}	
+	
+	public String getResponderName()
+	{
+		return responderName;
+	}
+
+	public void setResponderName(String responderName)
+	{
+		this.responderName=responderName;
+	}
+
+	public Element getTargetElement()
+	{
+		return targetElement;
+	}
+
+	public void setTargetElement(Element targetElement)
+	{
+		this.targetElement=targetElement;
+	}
+
+	public Element getResponderNameElement()
+	{
+		return responderNameElement;
+	}
+
+	public void setResponderNameElement(Element responderNameElement)
+	{
+		this.responderNameElement=responderNameElement;
+	}
 }

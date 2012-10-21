@@ -63,7 +63,6 @@ public class X3Console implements X3PanelListener, ResponderListener
 	private X3Source			source;
 	private X3Drain				drain;
 	private BeIDCards			beID;
-	private String				encodedUserPhoto;
 
 	public X3Console(final String svgURL,final String chaliceURL, final String responderURL)
 	{
@@ -176,7 +175,7 @@ public class X3Console implements X3PanelListener, ResponderListener
 			}
 			catch(MalformedURLException e)
 			{
-				LOGGER.log(Level.SEVERE,"Responder URL is Unusable",e);
+				LOGGER.log(Level.SEVERE,"Libation URL is Unusable",e);
 			}
 			catch(UnsupportedEncodingException e1)
 			{
