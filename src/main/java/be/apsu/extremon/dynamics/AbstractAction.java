@@ -30,6 +30,7 @@ public abstract class AbstractAction
 	private Element	element;
 	private String	format;
 	private X3Panel	panel;
+	private boolean isStyleAction;
 
 	public AbstractAction(X3Panel panel, Element element, String attribute, String format)
 	{
@@ -37,6 +38,16 @@ public abstract class AbstractAction
 		this.format=format;
 		this.element=element;
 		this.panel=panel;
+		this.isStyleAction=false;
+	}
+	
+	public AbstractAction(X3Panel panel, Element element, String attribute, String subAttribute, String format)
+	{
+		this.attribute=subAttribute;
+		this.format=format;
+		this.element=element;
+		this.panel=panel;
+		this.isStyleAction=true;
 	}
 	
 	public abstract void perform(String value);
@@ -44,7 +55,10 @@ public abstract class AbstractAction
 	
 	public final void queueAlteration(final String value)
 	{
-		this.panel.queueAlteration(this.element,this.attribute,value);
+		if(this.isStyleAction)
+			this.panel.queueAlteration(this.element,"style",this.attribute,value);
+		else
+			this.panel.queueAlteration(this.element,this.attribute,value);
 	}
 	
 	public final String getDefinedValue(final String key)

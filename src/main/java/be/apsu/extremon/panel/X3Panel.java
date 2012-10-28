@@ -49,10 +49,12 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.w3c.dom.Text;
+import org.w3c.dom.css.CSSStyleDeclaration;
 import org.w3c.dom.events.Event;
 import org.w3c.dom.events.EventListener;
 import org.w3c.dom.events.EventTarget;
 import org.w3c.dom.svg.SVGDocument;
+import org.w3c.dom.svg.SVGStylable;
 
 import be.apsu.extremon.client.X3Client;
 import be.apsu.extremon.client.X3ClientListener;
@@ -63,6 +65,7 @@ import be.apsu.extremon.dynamics.Alternator;
 import be.apsu.extremon.dynamics.CountdownSetAction;
 import be.apsu.extremon.dynamics.NumericSetAction;
 import be.apsu.extremon.dynamics.Respondable;
+import be.apsu.extremon.dynamics.StyleSetAction;
 import be.apsu.extremon.dynamics.Subscription;
 import be.apsu.extremon.dynamics.TextSetAction;
 import be.apsu.extremon.dynamics.TimestampSetAction;
@@ -377,6 +380,11 @@ public class X3Panel implements Runnable,X3ClientListener
 	{
 		this.alterationsInShuttle.add(new Alteration(on,attribute,value));
 	}
+	
+	public final void queueAlteration(final Element on,final String attribute, String subAttribute, final String value)
+	{
+		this.alterationsInShuttle.add(new Alteration(on,attribute,subAttribute,value));
+	}
 
 	public final String getName()
 	{
@@ -474,6 +482,13 @@ public class X3Panel implements Runnable,X3ClientListener
 						final String attributeName=arguments[0];
 						final String format=arguments[1];
 						addAction(label,(Element)node,new CountdownSetAction(this,(Element)node,attributeName.isEmpty()?null:attributeName,format));
+					}
+					else if(actionStr.equals("sset")&&arguments.length==2)
+					{
+						final String attributeName=arguments[0];
+						final String format=arguments[1];
+						LOGGER.fine("on "+label+" do StyleSetAction to "+format);
+						addAction(label,(Element)node,new StyleSetAction(this,(Element)node,attributeName,format));
 					}
 				}
 				else
@@ -590,9 +605,29 @@ public class X3Panel implements Runnable,X3ClientListener
 			{
 				final String defineLabel=defineParts[0];
 				final String defineAttrName=defineParts[1];
-				final String defineValue=SVGUtils.getAttr(node,defineAttrName);
-				LOGGER.fine("define "+defineLabel+" as "+defineValue);
-				this.defines.put(defineLabel,defineValue);
+				
+				if(defineAttrName.contains("/"))
+				{
+					final String[] attrNameParts=defineAttrName.split("/");
+					if(attrNameParts.length==2)
+					{
+						final String attribute=attrNameParts[0];
+						final String subAttribute=attrNameParts[1];
+						if(attribute.equalsIgnoreCase("style"))
+						{
+							CSSStyleDeclaration style=((SVGStylable)node).getStyle();
+							String defineValue=style.getPropertyValue(subAttribute);
+							LOGGER.fine("define "+defineLabel+" as "+defineValue);
+							this.defines.put(defineLabel,defineValue);
+						}
+					}
+				}
+				else
+				{
+					final String defineValue=SVGUtils.getAttr(node,defineAttrName);
+					LOGGER.fine("define "+defineLabel+" as "+defineValue);
+					this.defines.put(defineLabel,defineValue);
+				}
 			}
 		}
 
@@ -732,11 +767,17 @@ public class X3Panel implements Runnable,X3ClientListener
 		String value=_value;
 		if(label.endsWith(".state"))
 		{
+			if(label.equals("be.fedict.eid.prod.dss.state"))
+				System.err.println("[[[" + label + "]]]");
 			Respondable respondable=this.respondablesByLabel.get(label);
 			if(respondable!=null)
 			{
 				respondable.setState(Integer.parseInt(value));
 				performActions(label,String.valueOf(respondable.getDisplayState()));
+			}
+			else
+			{
+				performActions(label,value);
 			}
 		}
 		else

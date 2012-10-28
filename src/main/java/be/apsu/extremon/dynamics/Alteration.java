@@ -22,6 +22,8 @@
 package be.apsu.extremon.dynamics;
 
 import org.w3c.dom.Element;
+import org.w3c.dom.css.CSSStyleDeclaration;
+import org.w3c.dom.svg.SVGStylable;
 
 public class Alteration
 {
@@ -29,17 +31,28 @@ public class Alteration
 	private Element	on;
 	private String	attribute;
 	private String	value;
+	private boolean	isStyleElement;
 
 	public Alteration(Element on, String attribute, String value)
 	{
 		super();
 		this.on = on;
 		this.attribute = attribute;
+		this.isStyleElement=false;
 		
-		if(attribute!=null && value!=null && attribute.equals("width") && value.equals("0.0"))
+		if(attribute!=null && value!=null && attribute.equals("width") && (value.equals("0.0") || value.startsWith("-")))
 			this.value="0.00001";
 		else
 			this.value = value;
+	}
+	
+	public Alteration(Element on, String attribute, String subAttribute, String value)
+	{
+		super();
+		this.on = on;
+		this.attribute = subAttribute;
+		this.value=value;
+		this.isStyleElement=true;	
 	}
 	
 	public Alteration(Element on, String value)
@@ -48,14 +61,27 @@ public class Alteration
 		this.on = on;
 		this.attribute = null;
 		this.value=value;
+		this.isStyleElement=false;
 	}
 
 	public final void alter()
 	{
-		if (this.attribute != null)
-			this.on.setAttribute(this.attribute, this.value);
-		else
+		if(this.attribute==null)
+		{
 			this.on.setTextContent(this.value);
+		}
+		else
+		{
+			if(this.isStyleElement)
+			{
+				CSSStyleDeclaration style=((SVGStylable)this.on).getStyle();
+				style.setProperty(this.attribute,this.value,"");
+			}
+			else
+			{
+				this.on.setAttribute(this.attribute, this.value);		
+			}
+		}
 	}
 
 	// our identity in collections depends on the element:attribute tuple we act upon
