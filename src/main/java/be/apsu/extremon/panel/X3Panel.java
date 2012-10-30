@@ -38,6 +38,7 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.batik.dom.events.DOMKeyEvent;
 import org.apache.batik.swing.JSVGCanvas;
 import org.apache.batik.swing.gvt.AbstractImageZoomInteractor;
 import org.apache.batik.swing.gvt.AbstractPanInteractor;
@@ -157,69 +158,42 @@ public class X3Panel implements Runnable,X3ClientListener
 					{
 						Respondable respondable=X3Panel.this.respondablesByElement.get((Element)evt.getTarget());
 						if(respondable!=null)
-						{
-							if(!respondable.isResponding())
-							{	
-								for(ResponderListener listener:X3Panel.this.responderListeners)
-								{
-									try
-									{
-										listener.responding(respondable.getLabel(),true);
-									}
-									catch(Exception anyEx)
-									{
-										LOGGER.log(Level.WARNING,"Exception in ResponderListener",anyEx);
-									}
-								}
-							}
-							else
-							{
-								for(ResponderListener listener:X3Panel.this.responderListeners)
-								{
-									try
-									{
-										listener.responding(respondable.getLabel(),false);
-									}
-									catch(Exception anyEx)
-									{
-										LOGGER.log(Level.WARNING,"Exception in ResponderListener",anyEx);
-									}
-								}
-							}
-						}
+							listenersResponding(respondable,!respondable.isResponding());
 					}
+
+					
 				},true);
 				
-//				t.addEventListener("keydown",new EventListener()
-//				{
-//					@Override
-//					public void handleEvent(Event evt)
-//					{
-//						Element respondable=(Element)evt.getTarget();
-//						String respondableLabel=X3Panel.this.respondables.get(respondable);
-//						if(respondableLabel!=null)
-//						{
-//							String comment=X3Panel.this.responding.get(respondableLabel);
-//							if(comment!=null)
-//							{
-//								DOMKeyEvent keyEvent=(DOMKeyEvent)evt;
-//								comment=comment+=keyEvent.getCharCode();	
-//								for(ResponderListener listener:X3Panel.this.responderListeners)
-//								{
-//									try
-//									{
-//										listener.responderComment(respondableLabel,comment);
-//									}
-//									catch(Exception anyEx)
-//									{
-//										LOGGER.log(Level.WARNING,"Exception in ResponderListener",anyEx);
-//									}
-//								}
-//								X3Panel.this.responding.put(respondableLabel,comment);
-//							}
-//						}
-//					}
-//				},true);
+				t.addEventListener("keydown",new EventListener()
+				{
+					@Override
+					public void handleEvent(Event evt)
+					{
+						Respondable respondable=X3Panel.this.respondablesByElement.get((Element)evt.getTarget());
+						if(respondable!=null)
+						{
+							DOMKeyEvent keyEvent=(DOMKeyEvent)evt;
+							
+							switch(keyEvent.getCharCode())
+							{
+							case DOMKeyEvent.DOM_VK_BACK_SPACE:
+							case DOMKeyEvent.DOM_VK_CLEAR:
+								listenersResponderComment(respondable,"");
+								listenersResponding(respondable,false);
+								break;
+								
+							case 'r':
+								listenersResponding(respondable,!respondable.isResponding());
+								break;
+								
+							case 'c':
+								String comment=ResponderCommentDialog.requestResponderComment(respondable.getLabel(), respondable.getComment());
+								listenersResponderComment(respondable,comment);
+								break;
+							}
+						}
+					}	
+				},true);
 
 				inhaleDefines(X3Panel.this.document);
 				materializeTemplateUsages(X3Panel.this.document);
@@ -280,6 +254,36 @@ public class X3Panel implements Runnable,X3ClientListener
 
 		});
 	}
+	
+	private void listenersResponding(Respondable respondable, boolean responding)
+	{
+		for(ResponderListener listener:this.responderListeners)
+		{
+			try
+			{
+				listener.responding(respondable.getLabel(),responding);
+			}
+			catch(Exception anyEx)
+			{
+				LOGGER.log(Level.WARNING,"Exception in ResponderListener",anyEx);
+			}
+		}
+	}
+	
+	private void listenersResponderComment(Respondable respondable,String comment)
+	{
+		for(ResponderListener listener:this.responderListeners)
+		{
+			try
+			{
+				listener.responderComment(respondable.getLabel(),comment);
+			}
+			catch(Exception anyEx)
+			{
+				LOGGER.log(Level.WARNING,"Exception in ResponderListener",anyEx);
+			}
+		}
+	}
 
 	protected void assembleSubscription()
 	{
@@ -310,7 +314,15 @@ public class X3Panel implements Runnable,X3ClientListener
 	final Element createResponderNameLabel(Element target, String name)
 	{
 		final double x=Double.parseDouble(target.getAttribute("x"));
-		final double y=10.0+(Double.parseDouble(target.getAttribute("y"))+(Double.parseDouble(target.getAttribute("height"))));
+		      double y;
+
+		if(target.getNodeName().equalsIgnoreCase("rect"))
+			y=10.0+(Double.parseDouble(target.getAttribute("y"))+(Double.parseDouble(target.getAttribute("height"))));
+		else if(target.getNodeName().equalsIgnoreCase("text"))
+			y=(Double.parseDouble(target.getAttribute("y")))-10;
+		else
+			return null;
+		
 		final Element nameLabel=this.document.createElementNS("http://www.w3.org/2000/svg","text");
 		String style=this.defines.get("respondernamehidden");
 		if(style!=null)
@@ -322,32 +334,7 @@ public class X3Panel implements Runnable,X3ClientListener
 		return nameLabel;
 	}
 	
-	public final String trigramFromName(final String _name)
-	{
-		String[] nameParts=_name.toUpperCase().split(" ");
-		StringBuilder builder=new StringBuilder();
-		
-		switch(nameParts.length)
-		{
-			case 1: 
-				builder.append(nameParts[0].substring(0,2));
-			break;
-			
-			case 2:
-				builder.append(nameParts[0].substring(0,1));
-				builder.append(nameParts[1].substring(0,2));
-			break;
-			
-			default:
-				for(int i=0;i<nameParts.length;i++)
-				{
-					builder.append(nameParts[i].substring(0,1));
-				}
-			break;
-		}
-			
-		return builder.toString();
-	}
+	
 
 	public final void start()
 	{
@@ -529,15 +516,20 @@ public class X3Panel implements Runnable,X3ClientListener
 	
 	private void addRespondable(Element element,String label)
 	{
-		if(element.getNodeName().equalsIgnoreCase("rect"))
+		if(element.getNodeName().equalsIgnoreCase("rect") || element.getNodeName().equalsIgnoreCase("text"))
 		{
+			if(element.getNodeName().equalsIgnoreCase("text"))
+				System.err.println("TEXT!!");
 			Respondable respondable=this.respondablesByLabel.get(label);
 			if(respondable==null)
 			{
 				respondable=new Respondable(element,label);
 				Element responderNameLabel=createResponderNameLabel(element,"***");
-				respondable.setResponderNameElement(responderNameLabel);
-				element.getParentNode().appendChild(responderNameLabel);
+				if(responderNameLabel!=null)
+				{
+					respondable.setResponderNameElement(responderNameLabel);
+					element.getParentNode().appendChild(responderNameLabel);
+				}
 				
 				this.respondablesByLabel.put(label,respondable);
 			}
@@ -725,50 +717,54 @@ public class X3Panel implements Runnable,X3ClientListener
 	
 	private final void clientRespondingMeasure(final String label, final String type, final String value)
 	{
-		System.err.println("RespondingMeasure");
 		Respondable respondable=this.respondablesByLabel.get(label);
 		if(respondable!=null)
 		{
 			if(type.equals("responding"))
 			{
 				boolean responding=value.equals("1");
-				
 				if(responding!=respondable.isResponding())
 				{
 					respondable.setResponding(responding);
-					
-					String visibleResponderNameStyle=this.getDefinedValue("respondernamevisible");
-					String hiddenResponderNameStyle=this.getDefinedValue("respondernamehidden");
-					if(visibleResponderNameStyle!=null && hiddenResponderNameStyle!=null)
-					{
-						TextSetAction tsa=new TextSetAction(this,respondable.getResponderNameElement(),"style","#");
-						tsa.perform(responding?visibleResponderNameStyle:hiddenResponderNameStyle);
-					}	
+					updateResponderState(respondable,responding);	
 				}
 			}
 			else if(type.equals("responder.name"))
 			{
 				respondable.setResponderName(value);
-				TextSetAction tsa=new TextSetAction(this,respondable.getResponderNameElement(),null,"#");
-				tsa.perform(trigramFromName(value));
+				updateResponderText(respondable);
 
 			}
 			else if(type.equals("responder.comment"))
 			{
 				respondable.setComment(value);
-			}
-			
-			performActions(label,String.valueOf(respondable.getDisplayState()));
+				updateResponderText(respondable);
+			}	
+		}
+	}
+
+	private void updateResponderState(Respondable respondable,boolean responding)
+	{
+		String visibleResponderNameStyle=this.getDefinedValue("respondernamevisible");
+		String hiddenResponderNameStyle=this.getDefinedValue("respondernamehidden");
+		if(visibleResponderNameStyle!=null && hiddenResponderNameStyle!=null)
+		{
+			TextSetAction tsa=new TextSetAction(this,respondable.getResponderNameElement(),"style","#");
+			tsa.perform(responding?visibleResponderNameStyle:hiddenResponderNameStyle);
+			performActions(respondable.getLabel(),String.valueOf(respondable.getDisplayState()));
 		}
 	}
 	
-	private final void clientMeasure(final String label, final String _value)
+	private final void updateResponderText(Respondable respondable)
+	{
+		TextSetAction tsa=new TextSetAction(this,respondable.getResponderNameElement(),null,"#");
+		tsa.perform(respondable.getDisplayText());
+	}
+	
+	private final void clientMeasure(final String label, final String value)
 	{	
-		String value=_value;
 		if(label.endsWith(".state"))
 		{
-			if(label.equals("be.fedict.eid.prod.dss.state"))
-				System.err.println("[[[" + label + "]]]");
 			Respondable respondable=this.respondablesByLabel.get(label);
 			if(respondable!=null)
 			{

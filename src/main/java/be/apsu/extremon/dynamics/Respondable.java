@@ -19,6 +19,7 @@ public class Respondable
 		this.targetElement=targetElement;
 		this.label=label;
 		this.responding=false;
+		this.state=STATE.MISSING.getCode();
 	}
 	
 	public String getLabel()
@@ -42,6 +43,22 @@ public class Respondable
 			return this.state | STATE.RESPONDING_BITMASK;
 		else
 			return this.state;
+	}
+	
+	public String getDisplayText()
+	{
+		StringBuilder builder=new StringBuilder();
+		
+		if(getResponderName()!=null && !getResponderName().isEmpty())
+			builder.append(trigramFromName(getResponderName()));
+		
+		if(getComment()!=null && !getComment().isEmpty())
+		{
+			builder.append(' ');
+			builder.append(getComment());
+		}
+		
+		return builder.toString();
 	}
 	
 	public void setState(int state)
@@ -97,5 +114,32 @@ public class Respondable
 	public void setResponderNameElement(Element responderNameElement)
 	{
 		this.responderNameElement=responderNameElement;
+	}
+	
+	private final String trigramFromName(final String _name)
+	{
+		String[] nameParts=_name.toUpperCase().split(" ");
+		StringBuilder builder=new StringBuilder();
+		
+		switch(nameParts.length)
+		{
+			case 1: 
+				builder.append(nameParts[0].substring(0,2));
+			break;
+			
+			case 2:
+				builder.append(nameParts[0].substring(0,1));
+				builder.append(nameParts[1].substring(0,2));
+			break;
+			
+			default:
+				for(int i=0;i<nameParts.length;i++)
+				{
+					builder.append(nameParts[i].substring(0,1));
+				}
+			break;
+		}
+			
+		return builder.toString();
 	}
 }

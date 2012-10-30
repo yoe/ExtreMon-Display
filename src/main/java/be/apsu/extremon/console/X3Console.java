@@ -21,8 +21,6 @@
 
 package be.apsu.extremon.console;
 
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.Authenticator;
 import java.net.MalformedURLException;
 import java.net.PasswordAuthentication;
@@ -34,10 +32,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.net.ssl.HttpsURLConnection;
-import javax.smartcardio.CardException;
 import javax.swing.JFrame;
-
-import org.apache.commons.codec.binary.Base64;
 
 import be.apsu.extremon.client.X3Client;
 import be.apsu.extremon.client.X3Drain;
@@ -46,9 +41,7 @@ import be.apsu.extremon.panel.CredentialsDialog;
 import be.apsu.extremon.panel.ResponderListener;
 import be.apsu.extremon.panel.X3Panel;
 import be.apsu.extremon.panel.X3PanelListener;
-import be.fedict.commons.eid.client.BeIDCard;
 import be.fedict.commons.eid.client.BeIDCards;
-import be.fedict.commons.eid.client.FileType;
 import be.fedict.commons.eid.jca.BeIDProvider;
 import be.fedict.commons.eid.jca.BeIDSocketFactory;
 
@@ -168,34 +161,11 @@ public class X3Console implements X3PanelListener, ResponderListener
 					LOGGER.log(Level.SEVERE,"ExtreMon BeID Identification requires missing algorithm",e);
 				}
 				
-				BeIDCard card=beID.getAllBeIDCards().iterator().next();
-				String encodedUserPhoto=new String(Base64.encodeBase64(card.readFile(FileType.Photo)),"utf-8").replace('=','|');
-				drain.put("user.photo",encodedUserPhoto);
 				drain.start();	
 			}
 			catch(MalformedURLException e)
 			{
 				LOGGER.log(Level.SEVERE,"Libation URL is Unusable",e);
-			}
-			catch(UnsupportedEncodingException e1)
-			{
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
-			catch(CardException e1)
-			{
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
-			catch(IOException e1)
-			{
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
-			catch(InterruptedException e1)
-			{
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
 			}
 		}
 		
