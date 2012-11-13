@@ -24,6 +24,12 @@ package be.apsu.extremon.panel;
 import java.awt.Color;
 import java.awt.event.InputEvent;
 import java.awt.event.MouseEvent;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -39,6 +45,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.batik.dom.events.DOMKeyEvent;
+import org.apache.batik.dom.util.DOMUtilities;
+import org.apache.batik.svggen.SVGGeneratorContext;
 import org.apache.batik.swing.JSVGCanvas;
 import org.apache.batik.swing.gvt.AbstractImageZoomInteractor;
 import org.apache.batik.swing.gvt.AbstractPanInteractor;
@@ -46,6 +54,7 @@ import org.apache.batik.swing.gvt.AbstractResetTransformInteractor;
 import org.apache.batik.swing.gvt.Interactor;
 import org.apache.batik.swing.svg.SVGLoadEventDispatcherAdapter;
 import org.apache.batik.swing.svg.SVGLoadEventDispatcherEvent;
+import org.w3c.dom.DOMException;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -189,6 +198,32 @@ public class X3Panel implements Runnable,X3ClientListener
 							case 'c':
 								String comment=ResponderCommentDialog.requestResponderComment(respondable.getLabel(), respondable.getComment());
 								listenersResponderComment(respondable,comment);
+								break;
+								
+							case 's':	
+								try
+								{
+									System.out.println("Snapshot");
+									FileWriter writer = new FileWriter(new File("/tmp/x3snapshot.svg"));
+									DOMUtilities.writeDocument(document, writer);
+									writer.close();
+								}
+								catch(FileNotFoundException e)
+								{
+									e.printStackTrace();
+								}
+								catch(UnsupportedEncodingException e)
+								{
+									e.printStackTrace();
+								}
+								catch(DOMException e)
+								{
+									e.printStackTrace();
+								}
+								catch(IOException e)
+								{
+									e.printStackTrace();
+								}
 								break;
 							}
 						}
