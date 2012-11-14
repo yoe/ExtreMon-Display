@@ -26,33 +26,33 @@ import java.util.Calendar;
 import org.w3c.dom.Element;
 import be.apsu.extremon.panel.X3Panel;
 
-public class TimestampSetAction extends AbstractAction
-{
-	private static final int	DECISECONDS	=100;
-	private SimpleDateFormat 	timestampFormat;
-	private Calendar 			timestampCalendar;
-	
-	public TimestampSetAction(X3Panel panel,Element element,String attribute,String format)
-	{
-		super(panel,element,attribute,format.replace("#","%s"));
-		this.timestampCalendar=Calendar.getInstance();
-		this.timestampFormat=new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss.");
-	}
+public class TimestampSetAction extends AbstractAction {
+    private static final int DECISECONDS = 100;
+    private SimpleDateFormat timestampFormat;
+    private Calendar timestampCalendar;
 
-	@Override
-	public final void perform(String rawValue)
-	{			
-		try
-		{
-			final long timeStampInMs=(long)(Double.parseDouble(rawValue)*1000.0);
-			this.timestampCalendar.setTimeInMillis(timeStampInMs);
-			final String formattedDate=this.timestampFormat.format(this.timestampCalendar.getTime())+(this.timestampCalendar.get(Calendar.MILLISECOND)/DECISECONDS);
-			final String formattedValue=String.format(getFormat(),formattedDate);	
-			queueAlteration(formattedValue);
-		}
-		catch(NumberFormatException nfe)
-		{
-			queueAlteration(nfe.getLocalizedMessage());
-		}
+    public TimestampSetAction(X3Panel panel, Element element,
+	    String attribute, String format) {
+	super(panel, element, attribute, format.replace("#", "%s"));
+	this.timestampCalendar = Calendar.getInstance();
+	this.timestampFormat = new SimpleDateFormat(
+		"yyyy.MM.dd.HH.mm.ss.");
+    }
+
+    @Override
+    public final void perform(String rawValue) {
+	try {
+	    final long timeStampInMs = (long) (Double
+		    .parseDouble(rawValue) * 1000.0);
+	    this.timestampCalendar.setTimeInMillis(timeStampInMs);
+	    final String formattedDate = this.timestampFormat
+		    .format(this.timestampCalendar.getTime())
+		    + (this.timestampCalendar.get(Calendar.MILLISECOND) / DECISECONDS);
+	    final String formattedValue = String.format(getFormat(),
+		    formattedDate);
+	    queueAlteration(formattedValue);
+	} catch (NumberFormatException nfe) {
+	    queueAlteration(nfe.getLocalizedMessage());
 	}
+    }
 }

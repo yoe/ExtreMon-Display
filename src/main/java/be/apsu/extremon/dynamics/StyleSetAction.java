@@ -26,39 +26,37 @@ import java.util.Locale;
 import org.w3c.dom.Element;
 import be.apsu.extremon.panel.X3Panel;
 
-public class StyleSetAction extends AbstractAction
-{
-	public StyleSetAction(X3Panel panel,Element element,String attribute,String format)
-	{
-		super(panel,element,"style",attribute,format.replace("#","%s"));	
+public class StyleSetAction extends AbstractAction {
+    public StyleSetAction(X3Panel panel, Element element,
+	    String attribute, String format) {
+	super(panel, element, "style", attribute, format.replace("#",
+		"%s"));
+    }
+
+    @Override
+    public final void perform(String rawValue) {
+	String formattedValue = null;
+	final StringBuilder stringBuilder = new StringBuilder();
+	final Formatter formatter = new Formatter(stringBuilder,
+		Locale.US);
+
+	try {
+	    formatter.format(getFormat(), rawValue);
+	    formattedValue = stringBuilder.toString();
+
+	    if (formattedValue.startsWith("$")) {
+		final String lookedUpValue = getDefinedValue(formattedValue
+			.substring(1));
+		if (lookedUpValue == null)
+		    formattedValue = "Can't Substitute ["
+			    + formattedValue + "]. Undefined..";
+		else
+		    formattedValue = lookedUpValue;
+	    }
+	} finally {
+	    formatter.close();
 	}
 
-	@Override
-	public final void perform(String rawValue)
-	{	
-		String formattedValue=null;
-		final StringBuilder stringBuilder=new StringBuilder();
-		final Formatter formatter=new Formatter(stringBuilder,Locale.US);
-		
-		try
-		{
-			formatter.format(getFormat(),rawValue);
-			formattedValue=stringBuilder.toString();
-	
-			if(formattedValue.startsWith("$"))
-			{
-				final String lookedUpValue=getDefinedValue(formattedValue.substring(1));
-				if(lookedUpValue==null)
-					formattedValue="Can't Substitute ["+formattedValue+"]. Undefined..";
-				else
-					formattedValue=lookedUpValue;
-			}
-		}
-		finally
-		{
-			formatter.close();
-		}
-
-		queueAlteration(formattedValue);
-	}
+	queueAlteration(formattedValue);
+    }
 }

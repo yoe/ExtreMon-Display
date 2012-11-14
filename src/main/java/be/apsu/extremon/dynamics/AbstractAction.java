@@ -24,50 +24,47 @@ package be.apsu.extremon.dynamics;
 import org.w3c.dom.Element;
 import be.apsu.extremon.panel.X3Panel;
 
-public abstract class AbstractAction
-{
-	private String	attribute;
-	private Element	element;
-	private String	format;
-	private X3Panel	panel;
-	private boolean isStyleAction;
+public abstract class AbstractAction {
+    private String attribute;
+    private Element element;
+    private String format;
+    private X3Panel panel;
+    private boolean isStyleAction;
 
-	public AbstractAction(X3Panel panel, Element element, String attribute, String format)
-	{
-		this.attribute=attribute;
-		this.format=format;
-		this.element=element;
-		this.panel=panel;
-		this.isStyleAction=false;
-	}
-	
-	public AbstractAction(X3Panel panel, Element element, String attribute, String subAttribute, String format)
-	{
-		this.attribute=subAttribute;
-		this.format=format;
-		this.element=element;
-		this.panel=panel;
-		this.isStyleAction=true;
-	}
-	
-	public abstract void perform(String value);
-	
-	
-	public final void queueAlteration(final String value)
-	{
-		if(this.isStyleAction)
-			this.panel.queueAlteration(this.element,"style",this.attribute,value);
-		else
-			this.panel.queueAlteration(this.element,this.attribute,value);
-	}
-	
-	public final String getDefinedValue(final String key)
-	{
-		return this.panel.getDefinedValue(key);
-	}
+    public AbstractAction(X3Panel panel, Element element,
+	    String attribute, String format) {
+	this.attribute = attribute;
+	this.format = format;
+	this.element = element;
+	this.panel = panel;
+	this.isStyleAction = false;
+    }
 
-	public final String getFormat()
-	{
-		return this.format;
-	}
+    public AbstractAction(X3Panel panel, Element element,
+	    String attribute, String subAttribute, String format) {
+	this.attribute = subAttribute;
+	this.format = format;
+	this.element = element;
+	this.panel = panel;
+	this.isStyleAction = true;
+    }
+
+    public abstract void perform(String value);
+
+    public final void queueAlteration(final String value) {
+	if (this.isStyleAction)
+	    this.panel.queueAlteration(this.element, "style",
+		    this.attribute, value);
+	else
+	    this.panel.queueAlteration(this.element, this.attribute,
+		    value);
+    }
+
+    public final String getDefinedValue(final String key) {
+	return this.panel.getDefinedValue(key);
+    }
+
+    public final String getFormat() {
+	return this.format;
+    }
 }
