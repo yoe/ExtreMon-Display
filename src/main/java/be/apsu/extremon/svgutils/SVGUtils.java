@@ -1,5 +1,4 @@
-/*
- * ExtreMon Project
+/* ExtreMon Project
  * Copyright (C) 2009-2012 Frank Marien
  * frank@apsu.be
  *  
@@ -21,12 +20,9 @@
 
 package be.apsu.extremon.svgutils;
 
-import java.awt.geom.Point2D;
 import java.util.Iterator;
 import java.util.List;
 
-import org.apache.batik.parser.PathHandler;
-import org.apache.batik.parser.PathParser;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 
@@ -138,16 +134,6 @@ public final class SVGUtils {
 	attrNode.removeNamedItemNS(nameSpace, attrName);
     }
 
-    public static Point2D getCenterOfPath(Node node) {
-	final String d = node.getAttributes().getNamedItem("d")
-		.getNodeValue();
-	final CenterSeekingPathHandler csph = new CenterSeekingPathHandler();
-	final PathParser parser = new PathParser();
-	parser.setPathHandler(csph);
-	parser.parse(d);
-	return new Point2D.Double(csph.centerX, csph.centerY);
-    }
-
     public static String join(Iterable<? extends Object> pColl,
 	    String separator) {
 	Iterator<? extends Object> oIter;
@@ -182,169 +168,5 @@ public final class SVGUtils {
 	    return builder.toString().substring(1);
 	else
 	    return "";
-    }
-
-    public static final class CenterSeekingPathHandler implements
-	    PathHandler {
-	private double lastX;
-	private double lastY;
-	private double minX;
-	private double minY;
-	private double maxX;
-	private double maxY;
-	private double centerX;
-	private double centerY;
-
-	private CenterSeekingPathHandler() {
-	}
-
-	private void addAbsCoordinates(double x, double y) {
-	    if (x < this.minX)
-		this.minX = x;
-	    if (x > this.maxX)
-		this.maxX = x;
-	    if (y < this.minY)
-		this.minY = y;
-	    if (y > this.maxY)
-		this.maxY = y;
-	    this.lastX = x;
-	    this.lastY = y;
-	}
-
-	private void addRelCoordinates(double x, double y) {
-	    this.addAbsCoordinates(this.lastX + x, this.lastY + y);
-	}
-
-	@Override
-	public void startPath() {
-	    this.lastX = 0;
-	    this.lastY = 0;
-	    this.minX = this.minY = Double.MAX_VALUE;
-	    this.maxX = this.maxY = Double.MIN_VALUE;
-	}
-
-	@Override
-	public void closePath() {
-	}
-
-	@Override
-	public void endPath() {
-	    this.centerX = this.minX + ((this.maxX - this.minX) / 2.0);
-	    this.centerY = this.minY + ((this.maxY - this.minY) / 2.0);
-	}
-
-	@Override
-	public void arcAbs(final float arg0, final float arg1,
-		final float arg2, final boolean arg3, final boolean arg4,
-		final float x, final float y) {
-	    this.addAbsCoordinates(x, y);
-	}
-
-	@Override
-	public void arcRel(float arg0, float arg1, float arg2,
-		boolean arg3, boolean arg4, float x, float y) {
-
-	    this.addRelCoordinates(x, y);
-	}
-
-	@Override
-	public void curvetoCubicAbs(float arg0, float arg1, float arg2,
-		float arg3, float x, float y) {
-	    this.addAbsCoordinates(x, y);
-	}
-
-	@Override
-	public void curvetoCubicRel(float arg0, float arg1, float arg2,
-		float arg3, float x, float y) {
-	    this.addRelCoordinates(x, y);
-
-	}
-
-	@Override
-	public void curvetoCubicSmoothAbs(float arg0, float arg1,
-		float x, float y) {
-	    this.addAbsCoordinates(x, y);
-
-	}
-
-	@Override
-	public void curvetoCubicSmoothRel(float arg0, float arg1,
-		float x, float y) {
-	    this.addRelCoordinates(x, y);
-
-	}
-
-	@Override
-	public void curvetoQuadraticAbs(float arg0, float arg1, float x,
-		float y) {
-	    this.addAbsCoordinates(x, y);
-
-	}
-
-	@Override
-	public void curvetoQuadraticRel(float arg0, float arg1, float x,
-		float y) {
-	    this.addRelCoordinates(x, y);
-
-	}
-
-	@Override
-	public void curvetoQuadraticSmoothAbs(float x, float y) {
-	    this.addAbsCoordinates(x, y);
-
-	}
-
-	@Override
-	public void curvetoQuadraticSmoothRel(float x, float y) {
-	    this.addRelCoordinates(x, y);
-
-	}
-
-	@Override
-	public void linetoAbs(float x, float y) {
-	    this.addAbsCoordinates(x, y);
-
-	}
-
-	@Override
-	public void linetoHorizontalAbs(float x) {
-	    this.addAbsCoordinates(x, this.lastY);
-	}
-
-	@Override
-	public void linetoHorizontalRel(float x) {
-	    this.addRelCoordinates(x, this.lastY);
-
-	}
-
-	@Override
-	public void linetoRel(float x, float y) {
-	    this.addRelCoordinates(x, y);
-
-	}
-
-	@Override
-	public void linetoVerticalAbs(float y) {
-	    this.addAbsCoordinates(this.lastX, y);
-
-	}
-
-	@Override
-	public void linetoVerticalRel(float y) {
-	    this.addRelCoordinates(this.lastX, y);
-
-	}
-
-	@Override
-	public void movetoAbs(float x, float y) {
-	    this.addAbsCoordinates(x, y);
-
-	}
-
-	@Override
-	public void movetoRel(float x, float y) {
-	    this.addRelCoordinates(x, y);
-
-	}
     }
 }

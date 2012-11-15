@@ -1,5 +1,4 @@
-/*
- * ExtreMon Project
+/* ExtreMon Project
  * Copyright (C) 2009-2012 Frank Marien
  * frank@apsu.be
  *  
